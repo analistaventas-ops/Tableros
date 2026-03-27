@@ -10,7 +10,7 @@ export default function Dashboard({ user, onLogout }) {
   useEffect(() => {
     const fetchDashboard = async () => {
       try {
-        const res = await api.get('/api/dashboard');
+        const res = await api.get('/dashboard');
         setDashboardUrl(res.data.dashboard_url);
       } catch (err) {
         console.error("Error fetching dashboard", err);

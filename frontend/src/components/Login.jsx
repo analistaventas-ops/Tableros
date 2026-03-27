@@ -11,7 +11,7 @@ export default function Login({ onLogin }) {
     setError('');
     
     try {
-      const res = await api.post('/api/login', {
+      const res = await api.post('/login', {
         username,
         password
       });

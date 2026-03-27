@@ -21,10 +21,10 @@ export default function AdminPanel({ token, user: currentUser }) {
     try {
       if (currentUser.role === 'admin') {
         const [uRes, pRes, lRes, sRes] = await Promise.all([
-          api.get('/api/users'),
-          api.get('/api/positions'),
-          api.get('/api/logs'),
-          api.get('/api/stats')
+          api.get('/users'),
+          api.get('/positions'),
+          api.get('/logs'),
+          api.get('/stats')
         ]);
         setUsers(uRes.data);
         setPositions(pRes.data);
@@ -32,8 +32,8 @@ export default function AdminPanel({ token, user: currentUser }) {
         setStats(sRes.data);
       } else {
         const [lRes, sRes] = await Promise.all([
-          api.get('/api/logs'),
-          api.get('/api/stats')
+          api.get('/logs'),
+          api.get('/stats')
         ]);
         setLogs(lRes.data);
         setStats(sRes.data);
@@ -56,8 +56,8 @@ export default function AdminPanel({ token, user: currentUser }) {
     e.preventDefault();
     try {
       const data = { ...userFormData, position_id: userFormData.position_id || null };
-      if (editingUser) await api.put(`/api/users/${editingUser.id}`, data);
-      else await api.post('/api/users', data);
+      if (editingUser) await api.put(`/users/${editingUser.id}`, data);
+      else await api.post('/users', data);
       setShowUserModal(false);
       fetchData();
     } catch (err) { alert(err.response?.data?.error || "Error"); }
@@ -65,14 +65,14 @@ export default function AdminPanel({ token, user: currentUser }) {
 
   const handleSendCredentials = async (id) => {
     try {
-      const res = await api.post(`/api/users/send-credentials/${id}`, {});
+      const res = await api.post(`/users/send-credentials/${id}`, {});
       alert(res.data.message);
     } catch (err) { alert(err.response?.data?.error || "Error"); }
   };
 
   const handleUserDel = async (id) => {
     if (!window.confirm("¿Seguro que quieres eliminar este usuario?")) return;
-    try { await api.delete(`/api/users/${id}`); fetchData(); } catch (err) { alert(err.response?.data?.error || "Error"); }
+    try { await api.delete(`/users/${id}`); fetchData(); } catch (err) { alert(err.response?.data?.error || "Error"); }
   };
 
   const handlePosModal = (p = null) => {
@@ -84,8 +84,8 @@ export default function AdminPanel({ token, user: currentUser }) {
   const handlePosSave = async (e) => {
     e.preventDefault();
     try {
-      if (editingPos) await api.put(`/api/positions/${editingPos.id}`, posFormData);
-      else await api.post('/api/positions', posFormData);
+      if (editingPos) await api.put(`/positions/${editingPos.id}`, posFormData);
+      else await api.post('/positions', posFormData);
       setShowPosModal(false);
       fetchData();
     } catch (err) { alert(err.response?.data?.error || "Error"); }
@@ -93,7 +93,7 @@ export default function AdminPanel({ token, user: currentUser }) {
 
   const handlePosDel = async (id) => {
     if (!window.confirm("¿Seguro que quieres eliminar este puesto? No debe tener usuarios asignados.")) return;
-    try { await api.delete(`/api/positions/${id}`); fetchData(); } catch (err) { alert(err.response?.data?.error || "Error"); }
+    try { await api.delete(`/positions/${id}`); fetchData(); } catch (err) { alert(err.response?.data?.error || "Error"); }
   };
 
   return (
