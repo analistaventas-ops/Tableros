@@ -1,0 +1,14 @@
+**/node_modules
+backend/.env
+frontend/.env
+.env
+*.log
+dist
+.vscode
+.DS_Store
+backend/database.sqlite
+backend/server.log
+portal.zip
+tmp
+**/tmp
+**/dist
