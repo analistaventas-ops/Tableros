@@ -134,14 +134,19 @@ app.get('/api/stats', authenticateToken, async (req, res) => {
     return res.status(403).json({ error: 'Forbidden' });
   }
 
-  // Supabase no tiene una forma trivial de hacer GROUP BY complejo via JS sin vistas
-  // Dejamos este endpoint simplificado o para que el usuario cree una VISTA SQL.
-  const { data, error } = await db.rpc('get_user_stats'); // Opcional: usar una funcion de Postgres
+  const { from, to, positionId } = req.query; // Formato esperado: YYYY-MM-DD
+  
+  const { data, error } = await db.rpc('get_enhanced_stats', { 
+    start_date: from || null, 
+    end_date: to || null,
+    target_position_id: positionId || null
+  });
+  
   if (error) {
-    // Si la funcion RPC no existe, traemos lo ultimo por ahora
-    const { data: logs } = await db.from('access_logs').select('users(name)').limit(100);
-    return res.json(logs || []);
+    console.error("Stats Error:", error);
+    return res.status(500).json({ error: 'Error fetching dashboard stats' });
   }
+  
   res.json(data);
 });
 
@@ -155,18 +160,26 @@ app.get('/api/positions', authenticateToken, async (req, res) => {
 
 app.post('/api/positions', authenticateToken, async (req, res) => {
   if (req.user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
-  const { name, dashboard_url } = req.body;
+  const { name, dashboard_url, dashboard_name } = req.body;
   if (!name || !dashboard_url) return res.status(400).json({ error: 'Missing Required fields' });
   
-  const { data, error } = await db.from('positions').insert({ name, dashboard_url }).select().single();
+  const { data, error } = await db.from('positions').insert({ 
+    name, 
+    dashboard_url, 
+    dashboard_name: dashboard_name || name 
+  }).select().single();
   if (error) return res.status(500).json({ error: 'Database error or duplicate name' });
   res.json(data);
 });
 
 app.put('/api/positions/:id', authenticateToken, async (req, res) => {
   if (req.user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
-  const { name, dashboard_url } = req.body;
-  const { error } = await db.from('positions').update({ name, dashboard_url }).eq('id', req.params.id);
+  const { name, dashboard_url, dashboard_name } = req.body;
+  const { error } = await db.from('positions').update({ 
+    name, 
+    dashboard_url, 
+    dashboard_name 
+  }).eq('id', req.params.id);
   if (error) return res.status(500).json({ error: 'Database error' });
   res.json({ success: true });
 });

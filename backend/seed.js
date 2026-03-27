@@ -3,14 +3,14 @@ const bcrypt = require('bcryptjs');
 const db = require('./database'); // Ahora es Supabase
 
 const positionsData = [
-  { name: 'Directorio', dashboard_url: "https://app.powerbi.com/view?r=eyJrIjoiZTZiZmRhZDAtNzY4OS00YmMyLWFhZGQtYmI0NjEwN2IxMzcxIiwidCI6IjI2M2Q5OTY1LThjYWQtNDVkZi1iNDVkLTBkN2QxNjExNGJkOSJ9" },
-  { name: 'Administración', dashboard_url: "https://app.powerbi.com/view?r=eyJrIjoiNDc4MjUyZTMtZWJhMy00NzE0LWJmNDgtMWZlZjJjY2Y2MWQ1IiwidCI6IjI2M2Q5OTY1LThjYWQtNDVkZi1iNDVkLTBkN2QxNjExNGJkOSJ9" },
-  { name: 'Encargado Ecommerce', dashboard_url: "https://app.powerbi.com/view?r=eyJrIjoiYmJiZjFmYTktNzFiMi00ODBhLWFhOWYtNjE5NDlmMWYzZjdmIiwidCI6IjI2M2Q5OTY1LThjYWQtNDVkZi1iNDVkLTBkN2QxNjExNGJkOSJ9" },
-  { name: 'Encargado Colón', dashboard_url: "https://app.powerbi.com/view?r=eyJrIjoiYmMzNWZlZmItM2ViMC00OWI0LTkyZWItOTAxMTdmYjI0YTNhIiwidCI6IjI2M2Q5OTY1LThjYWQtNDVkZi1iNDVkLTBkN2QxNjExNGJkOSJ9" },
-  { name: 'Encargado Recta', dashboard_url: "https://app.powerbi.com/view?r=eyJrIjoiNzRhYjU2NWMtZGQ4ZS00ZDYzLThlMTktMzYxZjExM2U1NTM5IiwidCI6IjI2M2Q5OTY1LThjYWQtNDVkZi1iNDVkLTBkN2QxNjExNGJkOSJ9" },
-  { name: 'Asesor Ecommerce', dashboard_url: "https://app.powerbi.com/view?r=eyJrIjoiODE4MjgzNzAtMjQ2Ny00ZWNkLTk2ZDMtMzkzNWNkNWRjZGE0IiwidCI6IjI2M2Q5OTY1LThjYWQtNDVkZi1iNDVkLTBkN2QxNjExNGJkOSJ9" },
-  { name: 'Operativo COLON', dashboard_url: "https://app.powerbi.com/view?r=eyJrIjoiMzAxNmFkZGItMjE4ZC00MjQ1LWEyYjItYjk1Y2Y5ZTE4ZjA2IiwidCI6IjI2M2Q5OTY1LThjYWQtNDVkZi1iNDVkLTBkN2QxNjExNGJkOSJ9" },
-  { name: 'Operativo RECTA', dashboard_url: "https://app.powerbi.com/view?r=eyJrIjoiNTM3MTdjMGYtZTI2Mi00Y2ZlLWI2ZDktMGY5YmE3OTJiMTI4IiwidCI6IjI2M2Q5OTY1LThjYWQtNDVkZi1iNDVkLTBkN2QxNjExNGJkOSJ9" }
+  { name: 'Directorio', dashboard_name: 'Panel de Control - Alta Dirección', dashboard_url: "https://app.powerbi.com/view?r=eyJrIjoiZTZiZmRhZDAtNzY4OS00YmMyLWFhZGQtYmI0NjEwN2IxMzcxIiwidCI6IjI2M2Q5OTY1LThjYWQtNDVkZi1iNDVkLTBkN2QxNjExNGJkOSJ9" },
+  { name: 'Administración', dashboard_name: 'Gestión Administrativa y Finanzas', dashboard_url: "https://app.powerbi.com/view?r=eyJrIjoiNDc4MjUyZTMtZWJhMy00NzE0LWJmNDgtMWZlZjJjY2Y2MWQ1IiwidCI6IjI2M2Q5OTY1LThjYWQtNDVkZi1iNDVkLTBkN2QxNjExNGJkOSJ9" },
+  { name: 'Encargado Ecommerce', dashboard_name: 'Métricas de Venta Online', dashboard_url: "https://app.powerbi.com/view?r=eyJrIjoiYmJiZjFmYTktNzFiMi00ODBhLWFhOWYtNjE5NDlmMWYzZjdmIiwidCI6IjI2M2Q5OTY1LThjYWQtNDVkZi1iNDVkLTBkN2QxNjExNGJkOSJ9" },
+  { name: 'Encargado Colón', dashboard_name: 'Ventas y Stock - Sucursal Colón', dashboard_url: "https://app.powerbi.com/view?r=eyJrIjoiYmMzNWZlZmItM2ViMC00OWI0LTkyZWItOTAxMTdmYjI0YTNhIiwidCI6IjI2M2Q5OTY1LThjYWQtNDVkZi1iNDVkLTBkN2QxNjExNGJkOSJ9" },
+  { name: 'Encargado Recta', dashboard_name: 'Ventas y Stock - Sucursal Recta', dashboard_url: "https://app.powerbi.com/view?r=eyJrIjoiNzRhYjU2NWMtZGQ4ZS00ZDYzLThlMTktMzYxZjExM2U1NTM5IiwidCI6IjI2M2Q5OTY1LThjYWQtNDVkZi1iNDVkLTBkN2QxNjExNGJkOSJ9" },
+  { name: 'Asesor Ecommerce', dashboard_name: 'Monitor de Pedidos Ecommerce', dashboard_url: "https://app.powerbi.com/view?r=eyJrIjoiODE4MjgzNzAtMjQ2Ny00ZWNkLTk2ZDMtMzkzNWNkNWRjZGE0IiwidCI6IjI2M2Q5OTY1LThjYWQtNDVkZi1iNDVkLTBkN2QxNjExNGJkOSJ9" },
+  { name: 'Operativo COLON', dashboard_name: 'Planilla de Trabajo - Colón', dashboard_url: "https://app.powerbi.com/view?r=eyJrIjoiMzAxNmFkZGItMjE4ZC00MjQ1LWEyYjItYjk1Y2Y5ZTE4ZjA2IiwidCI6IjI2M2Q5OTY1LThjYWQtNDVkZi1iNDVkLTBkN2QxNjExNGJkOSJ9" },
+  { name: 'Operativo RECTA', dashboard_name: 'Planilla de Trabajo - Recta', dashboard_url: "https://app.powerbi.com/view?r=eyJrIjoiNTM3MTdjMGYtZTI2Mi00Y2ZlLWI2ZDktMGY5YmE3OTJiMTI4IiwidCI6IjI2M2Q5OTY1LThjYWQtNDVkZi1iNDVkLTBkN2QxNjExNGJkOSJ9" }
 ];
 
 // ... (datos omitidos por brevedad, usaremos los mismos del archivo original)
