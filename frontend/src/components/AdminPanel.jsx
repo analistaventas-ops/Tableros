@@ -26,7 +26,7 @@ export default function AdminPanel({ token, user: currentUser }) {
   
   const [showUserModal, setShowUserModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
-  const [userFormData, setUserFormData] = useState({ username: '', password: '', name: '', email: '', role: 'user', position_id: '' });
+  const [userFormData, setUserFormData] = useState({ username: '', password: '', name: '', email: '', role: 'user', position_ids: [] });
   const [showPassword, setShowPassword] = useState({});
  
   const [showPosModal, setShowPosModal] = useState(false);
@@ -48,7 +48,7 @@ export default function AdminPanel({ token, user: currentUser }) {
       
       const query = queryParams.toString() ? `?${queryParams.toString()}` : '';
       
-      const isDirectorio = currentUser.position_name === 'Directorio';
+      const isDirectorio = currentUser.position_name?.includes('Directorio');
       
       if (currentUser.role === 'admin') {
         const [uRes, pRes, lRes, sRes] = await Promise.all([
@@ -80,14 +80,17 @@ export default function AdminPanel({ token, user: currentUser }) {
 
   const handleUserModal = (u = null) => {
     setEditingUser(u);
-    setUserFormData(u ? { username: u.username, password: '', name: u.name, email: u.email || '', role: u.role, position_id: u.position_id || '' } : { username: '', password: '', name: '', email: '', role: 'user', position_id: '' });
+    setUserFormData(u ? 
+      { username: u.username, name: u.name, email: u.email || '', role: u.role, position_ids: u.position_ids || [], password: '' } : 
+      { username: '', password: '', name: '', email: '', role: 'user', position_ids: [] }
+    );
     setShowUserModal(true);
   };
 
   const handleUserSave = async (e) => {
     e.preventDefault();
     try {
-      const data = { ...userFormData, position_id: userFormData.position_id || null };
+      const data = { ...userFormData, position_ids: userFormData.position_ids || [] };
       if (editingUser) await api.put(`/users/${editingUser.id}`, data);
       else await api.post('/users', data);
       setShowUserModal(false);
@@ -173,47 +176,46 @@ export default function AdminPanel({ token, user: currentUser }) {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                 <tr className="bg-slate-50 text-slate-400 text-[10px] uppercase tracking-widest font-black border-b">
-                   <th className="p-4 pl-6">Identidad / Cuenta</th>
-                   <th className="p-4">Nombre</th>
-                   <th className="p-4">Puesto</th>
-                   <th className="p-4">Acceso</th>
-                   <th className="p-4 pr-6 text-right">Mantenimiento</th>
-                 </tr>
+                <tr className="bg-slate-50 text-slate-400 text-[10px] uppercase tracking-widest font-black border-b">
+                  <th className="p-4 pl-6">Cuenta / Email</th>
+                  <th className="p-4">Nombre Completo</th>
+                  <th className="px-6 py-3">Puestos Asignados</th>
+                  <th className="px-6 py-3">Rango</th>
+                  <th className="px-6 py-3 text-right">Acciones</th>
+                </tr>
               </thead>
               <tbody className="divide-y text-sm">
                 {users.map(u => (
-                  <tr key={u.id} className="hover:bg-blue-50/30 transition-colors">
+                  <tr key={u.id} className="hover:bg-slate-50/80 transition-colors">
                     <td className="p-4 pl-6">
                       <div className="font-bold text-slate-800">{u.username}</div>
                       <div className="text-slate-400 text-xs font-medium">{u.email || '—'}</div>
                     </td>
-                    <td className="p-4 text-slate-600 font-medium">{u.name}</td>
-                    <td className="p-4">
-                      {u.position_name ? (
-                        <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-lg text-xs font-bold border border-blue-100">{u.position_name}</span>
-                      ) : (
-                        <span className="text-slate-300 italic text-xs">Sin asignar</span>
-                      )}
-                    </td>
-                    <td className="p-4 min-w-[140px]">
-                      <div className="flex items-center gap-3">
-                        <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded bg-slate-100 ${showPassword[u.id] ? 'text-slate-800' : 'text-transparent select-none'}`}>
-                          {showPassword[u.id] ? u.password_plain : '••••••••'}
-                        </span>
-                        <button 
-                          onClick={() => setShowPassword(prev => ({...prev, [u.id]: !prev[u.id]}))}
-                          className="text-slate-400 hover:text-blue-500 transition"
-                        >
-                          {showPassword[u.id] ? <EyeOff size={14} /> : <Eye size={14} />}
-                        </button>
+                    <td className="p-4 text-slate-600 font-bold">{u.name}</td>
+                    <td className="px-6 py-3">
+                      <div className="flex flex-wrap gap-1.5 max-w-xs">
+                        {u.positions && u.positions.length > 0 ? (
+                          u.positions.map((p, idx) => (
+                            <span key={idx} className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-lg text-[10px] font-bold border border-blue-100 whitespace-nowrap">
+                              {p.name}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-slate-300 italic text-[10px]">Sin asignar</span>
+                        )}
                       </div>
                     </td>
-                    <td className="p-4 pr-6 text-right">
+                    <td className="px-6 py-3">
+                      <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-full ${u.role === 'admin' ? 'bg-indigo-100 text-indigo-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                        {u.role === 'admin' ? 'Admin' : 'Operador'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
                       <div className="flex justify-end gap-1">
-                        <button onClick={() => handleSendCredentials(u.id)} className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition" title="Enviar credenciales"><Mail size={16} /></button>
                         <button onClick={() => handleUserModal(u)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Editar"><Edit size={16} /></button>
-                        <button onClick={() => handleUserDel(u.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition" title="Borrar"><Trash2 size={16} /></button>
+                        {currentUser.id !== u.id && (
+                          <button onClick={() => handleUserDel(u.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition" title="Eliminar"><Trash2 size={16} /></button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -501,20 +503,49 @@ export default function AdminPanel({ token, user: currentUser }) {
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Nombre Completo</label>
                 <input required placeholder="Nombre y Apellido" value={userFormData.name} onChange={e => setUserFormData({...userFormData, name: e.target.value})} className="w-full border-slate-200 bg-slate-50 p-3 rounded-xl focus:ring-4 focus:ring-blue-100 focus:bg-white transition-all outline-none" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Privilegios</label>
-                  <select value={userFormData.role} onChange={e => setUserFormData({...userFormData, role: e.target.value})} className="w-full border-slate-200 bg-slate-50 p-3 rounded-xl focus:ring-4 focus:ring-blue-100 focus:bg-white transition-all outline-none">
-                    <option value="user">Visualizador</option>
-                    <option value="admin">Administrador</option>
-                  </select>
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Privilegios</label>
+                <select value={userFormData.role} onChange={e => setUserFormData({...userFormData, role: e.target.value})} className="w-full border-slate-200 bg-slate-50 p-3 rounded-xl focus:ring-4 focus:ring-blue-100 focus:bg-white transition-all outline-none">
+                  <option value="user">Visualizador</option>
+                  <option value="admin">Administrador</option>
+                </select>
+              </div>
+              <div className="pt-2">
+                <div className="flex items-center justify-between mb-3">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Tableros Asignados</label>
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      setEditingPos(null);
+                      setPosFormData({ name: '', dashboard_url: '', dashboard_name: '' });
+                      setShowPosModal(true);
+                      // Nota: No cerramos el modal del usuario, el posModal aparecerá encima
+                    }}
+                    className="flex items-center gap-1 text-[10px] font-black text-blue-600 hover:text-blue-700 uppercase tracking-widest px-2 py-1 rounded-lg hover:bg-blue-50 transition"
+                  >
+                    <Plus size={10} strokeWidth={4} /> Nuevo Puesto / Tablero
+                  </button>
                 </div>
-                <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Puesto Operativo</label>
-                  <select value={userFormData.position_id} onChange={e => setUserFormData({...userFormData, position_id: e.target.value})} className="w-full border-slate-200 bg-slate-50 p-3 rounded-xl focus:ring-4 focus:ring-blue-100 focus:bg-white transition-all outline-none" disabled={userFormData.role==='admin'}>
-                    <option value="">— Ninguno —</option>
-                    {positions.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                  </select>
+                <div className="grid grid-cols-2 gap-3 max-h-48 overflow-y-auto p-4 border-2 border-slate-100 rounded-2xl bg-slate-50/50 custom-scrollbar">
+                  {positions.map(p => (
+                    <label key={p.id} className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer border transition-all ${userFormData.position_ids.includes(p.id) ? 'bg-blue-50 border-blue-200 ring-1 ring-blue-100' : 'bg-white border-slate-100 hover:border-slate-300'}`}>
+                      <input 
+                        type="checkbox" 
+                        checked={userFormData.position_ids.includes(p.id)}
+                        onChange={(e) => {
+                          const ids = e.target.checked 
+                            ? [...userFormData.position_ids, p.id]
+                            : userFormData.position_ids.filter(id => id !== p.id);
+                          setUserFormData({...userFormData, position_ids: ids});
+                        }}
+                        className="w-4 h-4 rounded-md border-slate-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className={`text-[11px] font-bold ${userFormData.position_ids.includes(p.id) ? 'text-blue-700' : 'text-slate-600'}`}>
+                        {p.name}
+                      </span>
+                    </label>
+                  ))}
+                  {positions.length === 0 && <p className="text-[10px] text-slate-400 italic col-span-2 text-center py-4">No hay puestos configurados aún.</p>}
                 </div>
               </div>
             </div>
