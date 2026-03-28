@@ -48,6 +48,8 @@ export default function AdminPanel({ token, user: currentUser }) {
       
       const query = queryParams.toString() ? `?${queryParams.toString()}` : '';
       
+      const isDirectorio = currentUser.position_name === 'Directorio';
+      
       if (currentUser.role === 'admin') {
         const [uRes, pRes, lRes, sRes] = await Promise.all([
           api.get('/users'),
@@ -60,10 +62,12 @@ export default function AdminPanel({ token, user: currentUser }) {
         setLogs(lRes.data);
         setStats(sRes.data || { by_position: [], over_time: [], top_users: [] });
       } else {
-        const [lRes, sRes] = await Promise.all([
+        const [pRes, lRes, sRes] = await Promise.all([
+          isDirectorio ? api.get('/positions') : Promise.resolve({ data: [] }),
           api.get('/logs'),
           api.get(`/stats${query}`)
         ]);
+        if (isDirectorio) setPositions(pRes.data);
         setLogs(lRes.data);
         setStats(sRes.data || { by_position: [], over_time: [], top_users: [] });
       }
@@ -283,7 +287,7 @@ export default function AdminPanel({ token, user: currentUser }) {
                 </div>
               </div>
 
-              {currentUser.role === 'admin' && (
+              {(currentUser.role === 'admin' || currentUser.position_name === 'Directorio') && (
                 <>
                   <div className="flex items-center gap-3">
                     <span className="text-sm font-bold text-slate-700">Filtrar por Puesto:</span>

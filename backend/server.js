@@ -157,7 +157,7 @@ app.get('/api/stats', authenticateToken, async (req, res) => {
 
 // POSITIONS CRUD
 app.get('/api/positions', authenticateToken, async (req, res) => {
-  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+  if (req.user.role !== 'admin' && req.user.position_name !== 'Directorio') return res.status(403).json({ error: 'Forbidden' });
   const { data, error } = await db.from('positions').select('*').order('name');
   if (error) return res.status(500).json({ error: 'Database error' });
   res.json(data);
