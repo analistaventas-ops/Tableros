@@ -4,6 +4,7 @@ import AdminPanel from './AdminPanel';
 
 export default function Dashboard({ user, onLogout }) {
   const [dashboardUrl, setDashboardUrl] = useState('');
+  const [dashboardName, setDashboardName] = useState('');
   const [loading, setLoading] = useState(true);
   const [showMonitoring, setShowMonitoring] = useState(false);
 
@@ -12,6 +13,7 @@ export default function Dashboard({ user, onLogout }) {
       try {
         const res = await api.get('/dashboard');
         setDashboardUrl(res.data.dashboard_url);
+        setDashboardName(res.data.dashboard_name);
       } catch (err) {
         console.error("Error fetching dashboard", err);
       } finally {
@@ -36,7 +38,7 @@ export default function Dashboard({ user, onLogout }) {
         <div className="flex items-center gap-6">
           <img src="/assets/logo.png" alt="Logo" className="h-8 w-auto" onError={(e) => { e.target.style.display = 'none'; }} />
           <h1 className="text-lg font-bold text-slate-800">
-            {user.name}
+            {user.name} {dashboardName && <span className="font-light text-slate-400">| {dashboardName}</span>}
           </h1>
           {canSeeMonitoring && (
             <div className="flex bg-gray-100 rounded-lg p-1">

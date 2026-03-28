@@ -13,47 +13,66 @@ END $$;
 CREATE OR REPLACE FUNCTION get_enhanced_stats(
     start_date TEXT DEFAULT NULL, 
     end_date TEXT DEFAULT NULL,
-    target_position_id BIGINT DEFAULT NULL
+    target_position_id BIGINT DEFAULT NULL,
+    target_dashboard_name TEXT DEFAULT NULL
 )
 RETURNS JSON AS $$
 DECLARE
     result JSON;
     total_logins BIGINT;
     unique_users BIGINT;
-    most_active_day TEXT;
     over_time_data JSON;
+    over_time_month_data JSON;
     by_position_data JSON;
     top_users_data JSON;
 BEGIN
-    -- Base filters
-    -- If dates are null, we don't apply them or we use very old/future dates
-    
     -- Calculate KPIs
     SELECT COUNT(*) INTO total_logins
     FROM access_logs al
     JOIN users u ON al.user_id = u.id
+    JOIN positions p ON u.position_id = p.id
     WHERE (start_date IS NULL OR al.login_time >= start_date::TIMESTAMPTZ)
       AND (end_date IS NULL OR al.login_time <= end_date::TIMESTAMPTZ)
-      AND (target_position_id IS NULL OR u.position_id = target_position_id);
+      AND (target_position_id IS NULL OR u.position_id = target_position_id)
+      AND (target_dashboard_name IS NULL OR p.dashboard_name = target_dashboard_name);
 
     SELECT COUNT(DISTINCT user_id) INTO unique_users
     FROM access_logs al
     JOIN users u ON al.user_id = u.id
+    JOIN positions p ON u.position_id = p.id
     WHERE (start_date IS NULL OR al.login_time >= start_date::TIMESTAMPTZ)
       AND (end_date IS NULL OR al.login_time <= end_date::TIMESTAMPTZ)
-      AND (target_position_id IS NULL OR u.position_id = target_position_id);
+      AND (target_position_id IS NULL OR u.position_id = target_position_id)
+      AND (target_dashboard_name IS NULL OR p.dashboard_name = target_dashboard_name);
 
     -- Over Time Data (GroupBy Day)
     SELECT json_agg(t) INTO over_time_data
     FROM (
         SELECT 
-            TO_CHAR(al.login_time AT TIME ZONE 'UTC', 'YYYY-MM-DD') as date,
+            TO_CHAR(al.login_time AT TIME ZONE 'America/Argentina/Buenos_Aires', 'YYYY-MM-DD') as date,
             COUNT(*) as count
         FROM access_logs al
         JOIN users u ON al.user_id = u.id
+        JOIN positions p ON u.position_id = p.id
         WHERE (start_date IS NULL OR al.login_time >= start_date::TIMESTAMPTZ)
           AND (end_date IS NULL OR al.login_time <= end_date::TIMESTAMPTZ)
           AND (target_position_id IS NULL OR u.position_id = target_position_id)
+          AND (target_dashboard_name IS NULL OR p.dashboard_name = target_dashboard_name)
+        GROUP BY 1
+        ORDER BY 1 ASC
+    ) t;
+
+    -- Over Time Data (GroupBy Month)
+    SELECT json_agg(t) INTO over_time_month_data
+    FROM (
+        SELECT 
+            TO_CHAR(al.login_time AT TIME ZONE 'America/Argentina/Buenos_Aires', 'YYYY-MM') as month,
+            COUNT(*) as count
+        FROM access_logs al
+        JOIN users u ON al.user_id = u.id
+        JOIN positions p ON u.position_id = p.id
+        WHERE (target_position_id IS NULL OR u.position_id = target_position_id)
+          AND (target_dashboard_name IS NULL OR p.dashboard_name = target_dashboard_name)
         GROUP BY 1
         ORDER BY 1 ASC
     ) t;
@@ -70,6 +89,7 @@ BEGIN
         WHERE (start_date IS NULL OR al.login_time >= start_date::TIMESTAMPTZ)
           AND (end_date IS NULL OR al.login_time <= end_date::TIMESTAMPTZ)
           AND (target_position_id IS NULL OR u.position_id = target_position_id)
+          AND (target_dashboard_name IS NULL OR p.dashboard_name = target_dashboard_name)
         GROUP BY p.name
         ORDER BY count DESC
     ) t;
@@ -82,9 +102,11 @@ BEGIN
             COUNT(al.id) as count
         FROM access_logs al
         JOIN users u ON al.user_id = u.id
+        JOIN positions p ON u.position_id = p.id
         WHERE (start_date IS NULL OR al.login_time >= start_date::TIMESTAMPTZ)
           AND (end_date IS NULL OR al.login_time <= end_date::TIMESTAMPTZ)
           AND (target_position_id IS NULL OR u.position_id = target_position_id)
+          AND (target_dashboard_name IS NULL OR p.dashboard_name = target_dashboard_name)
         GROUP BY u.name
         ORDER BY count DESC
         LIMIT 5
@@ -97,6 +119,7 @@ BEGIN
             'unique_users', unique_users
         ),
         'over_time', COALESCE(over_time_data, '[]'::json),
+        'over_time_month', COALESCE(over_time_month_data, '[]'::json),
         'by_position', COALESCE(by_position_data, '[]'::json),
         'top_users', COALESCE(top_users_data, '[]'::json)
     );

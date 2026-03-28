@@ -22,6 +22,7 @@ export default function AdminPanel({ token, user: currentUser }) {
   const [activeTab, setActiveTab] = useState(currentUser.role === 'admin' ? 'users' : 'logs');
   const [statsRange, setStatsRange] = useState('7d');
   const [selectedPositionId, setSelectedPositionId] = useState('');
+  const [selectedDashboard, setSelectedDashboard] = useState('');
   
   const [showUserModal, setShowUserModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
@@ -43,6 +44,7 @@ export default function AdminPanel({ token, user: currentUser }) {
       const queryParams = new URLSearchParams();
       if (fromDate) queryParams.append('from', fromDate);
       if (selectedPositionId) queryParams.append('positionId', selectedPositionId);
+      if (selectedDashboard) queryParams.append('dashboardName', selectedDashboard);
       
       const query = queryParams.toString() ? `?${queryParams.toString()}` : '';
       
@@ -70,7 +72,7 @@ export default function AdminPanel({ token, user: currentUser }) {
     }
   };
 
-  useEffect(() => { fetchData() }, [token, statsRange, selectedPositionId]);
+  useEffect(() => { fetchData() }, [token, statsRange, selectedPositionId, selectedDashboard]);
 
   const handleUserModal = (u = null) => {
     setEditingUser(u);
@@ -228,24 +230,26 @@ export default function AdminPanel({ token, user: currentUser }) {
             <table className="w-full text-left">
               <thead>
                  <tr className="bg-slate-50 text-slate-400 text-[10px] uppercase tracking-widest font-black border-b">
-                   <th className="p-4 pl-6">Nombre del Puesto</th>
-                   <th className="p-4">Tablero Asignado</th>
+                   <th className="p-4 pl-6">Tablero</th>
+                   <th className="p-4">Puesto/Categoría</th>
                    <th className="p-4">Preview URL</th>
-                   <th className="p-4 pr-6 text-right">Acciones</th>
+                   <th className="p-4 pr-6 text-right">Mantenimiento</th>
                  </tr>
               </thead>
               <tbody className="divide-y text-sm">
                 {positions.map(p => (
                   <tr key={p.id} className="hover:bg-indigo-50/30 transition-colors">
-                    <td className="p-4 pl-6 font-bold text-slate-900">{p.name}</td>
+                    <td className="p-4 pl-6">
+                      <div className="font-bold text-indigo-700">{p.dashboard_name || 'Tablero Sin Nombre'}</div>
+                    </td>
                     <td className="p-4">
-                      <span className="font-bold text-indigo-700 bg-indigo-50 px-3 py-1 rounded-lg border border-indigo-100">{p.dashboard_name || p.name}</span>
+                      <span className="bg-indigo-50 text-indigo-600 px-3 py-1 rounded-lg text-xs font-bold border border-indigo-100">{p.name}</span>
                     </td>
                     <td className="p-4 text-[10px] font-mono text-slate-400 break-all max-w-xs">{p.dashboard_url.substring(0, 100)}...</td>
                     <td className="p-4 pr-6 text-right">
                        <div className="flex justify-end gap-1">
-                        <button onClick={() => handlePosModal(p)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"><Edit size={16} /></button>
-                        <button onClick={() => handlePosDel(p.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"><Trash2 size={16} /></button>
+                        <button onClick={() => handlePosModal(p)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Editar"><Edit size={16} /></button>
+                        <button onClick={() => handlePosDel(p.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition" title="Eliminar"><Trash2 size={16} /></button>
                       </div>
                     </td>
                   </tr>
@@ -280,19 +284,35 @@ export default function AdminPanel({ token, user: currentUser }) {
               </div>
 
               {currentUser.role === 'admin' && (
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-bold text-slate-700">Filtrar por Puesto:</span>
-                  <select 
-                    value={selectedPositionId} 
-                    onChange={e => setSelectedPositionId(e.target.value)}
-                    className="p-2 rounded-xl border-slate-200 bg-slate-50 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-100 transition"
-                  >
-                    <option value="">— Ver Todos —</option>
-                    {positions.map(p => (
-                      <option key={p.id} value={p.id}>{p.name}</option>
-                    ))}
-                  </select>
-                </div>
+                <>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-bold text-slate-700">Filtrar por Puesto:</span>
+                    <select 
+                      value={selectedPositionId} 
+                      onChange={e => setSelectedPositionId(e.target.value)}
+                      className="p-2 rounded-xl border-slate-200 bg-slate-50 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-100 transition"
+                    >
+                      <option value="">— Ver Todos —</option>
+                      {positions.map(p => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-bold text-slate-700">Por Tablero:</span>
+                    <select 
+                      value={selectedDashboard} 
+                      onChange={e => setSelectedDashboard(e.target.value)}
+                      className="p-2 rounded-xl border-slate-200 bg-slate-50 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-100 transition"
+                    >
+                      <option value="">— Ver Todos —</option>
+                      {[...new Set(positions.map(p => p.dashboard_name).filter(Boolean))].map(d => (
+                        <option key={d} value={d}>{d}</option>
+                      ))}
+                    </select>
+                  </div>
+                </>
               )}
             </div>
             
@@ -336,12 +356,12 @@ export default function AdminPanel({ token, user: currentUser }) {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Gráfico de Evolución */}
-            <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border p-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Gráfico de Evolución Diaria */}
+            <div className="bg-white rounded-2xl shadow-sm border p-6">
               <div className="flex items-center gap-2 mb-6">
                 <TrendingUp size={20} className="text-blue-500" />
-                <h3 className="font-bold text-slate-800">Evolutivo de Accesos</h3>
+                <h3 className="font-bold text-slate-800">Tendencia Diaria</h3>
               </div>
               <div className="h-[250px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
@@ -356,6 +376,27 @@ export default function AdminPanel({ token, user: currentUser }) {
               </div>
             </div>
 
+            {/* Gráfico de Evolución Mensual */}
+            <div className="bg-white rounded-2xl shadow-sm border p-6">
+              <div className="flex items-center gap-2 mb-6">
+                <BarChart2 size={20} className="text-purple-500" />
+                <h3 className="font-bold text-slate-800">Evolutivo Mensual</h3>
+              </div>
+              <div className="h-[250px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={stats.over_time_month || []}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#94a3b8'}} />
+                    <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#94a3b8'}} />
+                    <Tooltip contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'}} />
+                    <Bar dataKey="count" name="Ingresos" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Gráfico de Torta: Puestos */}
             <div className="bg-white rounded-2xl shadow-sm border p-6">
               <div className="flex items-center gap-2 mb-6">
@@ -376,9 +417,7 @@ export default function AdminPanel({ token, user: currentUser }) {
                 </ResponsiveContainer>
               </div>
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Top Usuarios */}
             <div className="bg-white rounded-2xl shadow-sm border p-6">
               <div className="flex items-center gap-2 mb-6">
@@ -405,7 +444,7 @@ export default function AdminPanel({ token, user: currentUser }) {
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <Activity size={20} className="text-slate-400" />
-                  <h3 className="font-bold text-slate-800">Actividad en Tiempo Real</h3>
+                  <h3 className="font-bold text-slate-800">Actividad Reciente</h3>
                 </div>
               </div>
               <div className="space-y-3 overflow-y-auto max-h-[250px] pr-2 custom-scrollbar">

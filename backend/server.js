@@ -71,7 +71,7 @@ app.post('/api/login', async (req, res) => {
 app.get('/api/me', authenticateToken, async (req, res) => {
   const { data: user, error } = await db
     .from('users')
-    .select('id, username, name, role, positions(name)')
+    .select('id, username, name, role, positions(name, dashboard_name)')
     .eq('id', req.user.id)
     .single();
 
@@ -79,19 +79,23 @@ app.get('/api/me', authenticateToken, async (req, res) => {
   
   res.json({
     ...user,
-    position_name: user.positions ? user.positions.name : null
+    position_name: user.positions ? user.positions.name : null,
+    dashboard_name: user.positions ? user.positions.dashboard_name : null
   });
 });
 
 app.get('/api/dashboard', authenticateToken, async (req, res) => {
   const { data, error } = await db
     .from('users')
-    .select('positions(dashboard_url)')
+    .select('positions(dashboard_url, dashboard_name)')
     .eq('id', req.user.id)
     .single();
 
   if (error || !data) return res.status(500).json({ error: 'Error getting dashboard url' });
-  res.json({ dashboard_url: data.positions ? data.positions.dashboard_url : '' });
+  res.json({ 
+    dashboard_url: data.positions ? data.positions.dashboard_url : '',
+    dashboard_name: data.positions ? data.positions.dashboard_name : '' 
+  });
 });
 
 app.get('/api/logs', authenticateToken, async (req, res) => {
@@ -134,12 +138,13 @@ app.get('/api/stats', authenticateToken, async (req, res) => {
     return res.status(403).json({ error: 'Forbidden' });
   }
 
-  const { from, to, positionId } = req.query; // Formato esperado: YYYY-MM-DD
+  const { from, to, positionId, dashboardName } = req.query; // Formato esperado: YYYY-MM-DD
   
   const { data, error } = await db.rpc('get_enhanced_stats', { 
     start_date: from || null, 
     end_date: to || null,
-    target_position_id: positionId || null
+    target_position_id: positionId ? parseInt(positionId) : null,
+    target_dashboard_name: dashboardName || null
   });
   
   if (error) {
