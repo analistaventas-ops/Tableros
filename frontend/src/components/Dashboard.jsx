@@ -16,7 +16,6 @@ export default function Dashboard({ user, onLogout }) {
         setDashboards(list);
         if (list.length > 0 && !activeDashboard) {
            setActiveDashboard(list[0]);
-           api.post('/logs/dashboard', { dashboard_url: list[0].dashboard_url }).catch(() => {});
         }
       } catch (err) {
         console.error("Error fetching dashboards", err);
@@ -101,7 +100,6 @@ export default function Dashboard({ user, onLogout }) {
                     key={idx}
                     onClick={() => {
                       setActiveDashboard(db);
-                      api.post('/logs/dashboard', { dashboard_url: db.dashboard_url }).catch(() => {});
                     }}
                     className={`px-6 py-3 text-xs font-bold transition-all relative whitespace-nowrap ${activeDashboard?.dashboard_url === db.dashboard_url ? 'text-blue-600 bg-blue-50/50' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
                   >

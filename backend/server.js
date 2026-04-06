@@ -178,15 +178,39 @@ app.get('/api/stats', authenticateToken, async (req, res) => {
   res.json(data);
 });
 
-// HEARTBEAT for time measurement (every 30s)
+// NEW HEARTBEAT: Upsert into activity_sessions to keep DB clean
 app.post('/api/logs/heartbeat', authenticateToken, async (req, res) => {
   const { dashboard_url } = req.body;
   if (!dashboard_url) return res.status(400).json({ error: 'Missing URL' });
   
-  await db.from('activity_heartbeats').insert({ 
-    user_id: req.user.id, 
-    dashboard_url: dashboard_url 
-  });
+  const today = new Date().toISOString().split('T')[0];
+  
+  // UPSERT logic: if session exists for today/user/dashboard, increment duration. Otherwise create.
+  // Note: we assume +1 minute (actually 30s but we count by pings)
+  const { data: existing } = await db
+    .from('activity_sessions')
+    .select('id, duration_minutes')
+    .eq('user_id', req.user.id)
+    .eq('dashboard_url', dashboard_url)
+    .eq('session_date', today)
+    .single();
+
+  if (existing) {
+    await db.from('activity_sessions')
+      .update({ 
+        last_ping: new Date().toISOString(),
+        duration_minutes: existing.duration_minutes + 1 // Approximating 1 unit per ping
+      })
+      .eq('id', existing.id);
+  } else {
+    await db.from('activity_sessions').insert({
+      user_id: req.user.id,
+      dashboard_url: dashboard_url,
+      session_date: today,
+      duration_minutes: 1
+    });
+  }
+  
   res.json({ success: true });
 });
 
