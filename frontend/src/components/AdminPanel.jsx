@@ -179,8 +179,12 @@ export default function AdminPanel({ token, user: currentUser }) {
       {/* Header Con Tabs */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-4">
         <div>
-          <h2 className="text-2xl font-black text-slate-900 tracking-tight">Panel de Control</h2>
-          <p className="text-slate-500 text-sm font-medium">Gestión de matriz de tableros y métricas.</p>
+          <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+            {currentUser.role === 'admin' ? 'Panel de Control' : 'Seguimiento de Gestión'}
+          </h2>
+          <p className="text-slate-500 text-sm font-medium">
+            {currentUser.role === 'admin' ? 'Gestión de matriz de tableros y métricas.' : 'Análisis de uso y métricas de desempeño de tableros.'}
+          </p>
         </div>
         <div className="flex flex-wrap bg-white rounded-xl shadow-sm border p-1.5 gap-1">
           {currentUser.role === 'admin' && (
@@ -488,13 +492,15 @@ export default function AdminPanel({ token, user: currentUser }) {
               </div>
             </div>
 
-            {/* TOP USUARIOS ACTIVOS (Tabla) */}
-            <div className="lg:col-span-2 bg-white rounded-3xl shadow-sm border overflow-hidden">
-               <div className="p-8 border-b flex items-center gap-3 bg-slate-50/50">
-                  <div className="bg-orange-600 p-2 rounded-lg text-white shadow-lg shadow-orange-200"><Users size={18} /></div>
-                  <h3 className="font-extrabold text-slate-800">Top 8 Colaboradores (Mayor actividad)</h3>
+            {/* TOP USUARIOS ACTIVOS */}
+            <div className="lg:col-span-2 bg-white rounded-3xl shadow-sm border overflow-hidden flex flex-col">
+               <div className="p-8 border-b flex items-center justify-between bg-slate-50/50">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-orange-600 p-2 rounded-lg text-white shadow-lg shadow-orange-200"><Users size={18} /></div>
+                    <h3 className="font-extrabold text-slate-800">Top 8 Colaboradores</h3>
+                  </div>
                </div>
-               <div className="p-4">
+               <div className="p-6 flex-1">
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                    {(stats.top_users || []).map((u, i) => (
                      <div key={i} className="flex items-center justify-between p-4 rounded-2xl hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100">
@@ -512,6 +518,42 @@ export default function AdminPanel({ token, user: currentUser }) {
                </div>
             </div>
 
+          </div>
+
+          {/* TABLA DE AUDITORÍA (Logs crudos) */}
+          <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="p-6 border-b flex items-center justify-between bg-slate-50/50">
+              <div className="flex items-center gap-3">
+                <div className="bg-slate-800 p-2 rounded-lg text-white"><Calendar size={18} /></div>
+                <h3 className="font-bold text-slate-800">Historial Detallado (Últimos 100)</h3>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="bg-slate-50/50 text-slate-400 text-[10px] uppercase tracking-widest font-black border-b">
+                    <th className="p-4 pl-8">Colaborador</th>
+                    <th className="p-4">Puesto</th>
+                    <th className="p-4">Fecha y Hora</th>
+                    <th className="p-4">Acción / Tablero</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y text-xs">
+                  {logs.map(log => (
+                    <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="p-4 pl-8 font-bold text-slate-700">{log.name} <span className="text-slate-400 font-normal">({log.username})</span></td>
+                      <td className="p-4"><span className="text-slate-500">{log.position_name}</span></td>
+                      <td className="p-4 text-slate-400 font-medium">{format(new Date(log.login_time), 'dd MMM, HH:mm', { locale: es })}</td>
+                      <td className="p-4">
+                        <span className={`px-2 py-1 rounded-md font-bold text-[10px] ${log.dashboard_url === 'LOGIN' ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
+                          {log.dashboard_url === 'LOGIN' ? '🚀 INICIO SESIÓN' : '📊 VIO TABLERO'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}

@@ -129,7 +129,9 @@ app.get('/api/logs', authenticateToken, async (req, res) => {
       users (
         username,
         name,
-        positions (name)
+        user_positions (
+          positions (name)
+        )
       )
     `)
     .order('login_time', { ascending: false })
@@ -137,15 +139,17 @@ app.get('/api/logs', authenticateToken, async (req, res) => {
 
   if (error) return res.status(500).json({ error: 'Database error' });
   
-  // Adaptamos el formato de retorno para que sea igual al anterior
-  const formatted = data.map(log => ({
-    id: log.id,
-    username: log.users.username,
-    name: log.users.name,
-    login_time: log.login_time,
-    dashboard_url: log.dashboard_url,
-    position_name: log.users.positions ? log.users.positions.name : ''
-  }));
+  const formatted = data.map(log => {
+    const userPositions = log.users.user_positions ? log.users.user_positions.map(up => up.positions?.name).filter(Boolean) : [];
+    return {
+      id: log.id,
+      username: log.users.username,
+      name: log.users.name,
+      login_time: log.login_time,
+      dashboard_url: log.dashboard_url,
+      position_name: userPositions.join(', ')
+    };
+  });
   
   res.json(formatted);
 });
