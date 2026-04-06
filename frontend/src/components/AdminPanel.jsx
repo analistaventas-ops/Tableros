@@ -81,7 +81,6 @@ export default function AdminPanel({ token, user: currentUser }) {
       const isDirectorio = currentUser?.position_name?.toLowerCase().includes('directorio');
       
       if (currentUser?.role === 'admin') {
-        // We fetch independently or use a safe Promise.all pattern
         const [uRes, pRes, tRes, lkRes, lRes, sRes] = await Promise.all([
           api.get('/users').catch(e => ({ data: [] })),
           api.get('/positions').catch(e => ({ data: [] })),
@@ -98,17 +97,20 @@ export default function AdminPanel({ token, user: currentUser }) {
         setLogs(Array.isArray(lRes.data) ? lRes.data : []);
         if (sRes.data) setStats(sRes.data);
       } else {
-        const [pRes, lRes, sRes, uRes] = await Promise.all([
+        // Directorio also needs dashboard types for filtering
+        const [pRes, lRes, sRes, uRes, tRes] = await Promise.all([
           isDirectorio ? api.get('/positions').catch(e => ({ data: [] })) : Promise.resolve({ data: [] }),
           api.get('/logs' + query).catch(e => ({ data: [] })),
           api.get('/stats' + query).catch(e => ({ data: null })),
-          isDirectorio ? api.get('/users').catch(e => ({ data: [] })) : Promise.resolve({ data: [] })
+          isDirectorio ? api.get('/users').catch(e => ({ data: [] })) : Promise.resolve({ data: [] }),
+          api.get('/dashboard-types').catch(e => ({ data: [] }))
         ]);
         
         if (isDirectorio) {
           setPositions(Array.isArray(pRes.data) ? pRes.data : []);
           setUsers(Array.isArray(uRes.data) ? uRes.data : []);
         }
+        setDashboardTypes(Array.isArray(tRes.data) ? tRes.data : []);
         setLogs(Array.isArray(lRes.data) ? lRes.data : []);
         if (sRes.data) setStats(sRes.data);
       }
@@ -377,6 +379,16 @@ export default function AdminPanel({ token, user: currentUser }) {
               <div className="h-4 w-px bg-slate-200"></div>
               
               <div className="flex items-center gap-2">
+                <Briefcase size={12} className="text-slate-400" />
+                <select value={selectedPositionId} onChange={e => setSelectedPositionId(e.target.value)} className="bg-slate-50 border-none px-3 py-1.5 rounded-xl text-[10px] font-black text-slate-700 outline-none cursor-pointer">
+                  <option value="">Puesto: Todos</option>
+                  {positions.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </div>
+
+              <div className="h-4 w-px bg-slate-200"></div>
+
+              <div className="flex items-center gap-2">
                 <Users size={12} className="text-slate-400" />
                 <select value={selectedUserId} onChange={e => setSelectedUserId(e.target.value)} className="bg-slate-50 border-none px-3 py-1.5 rounded-xl text-[10px] font-black text-slate-700 outline-none cursor-pointer">
                   <option value="">Colaborador: Todos</option>
@@ -386,10 +398,13 @@ export default function AdminPanel({ token, user: currentUser }) {
 
               <div className="h-4 w-px bg-slate-200"></div>
 
-              <select value={selectedDashboard} onChange={e => setSelectedDashboard(e.target.value)} className="bg-slate-50 border-none px-3 py-1.5 rounded-xl text-[10px] font-black text-slate-700 outline-none cursor-pointer">
-                <option value="">Análisis por Tablero</option>
-                {dashboardTypes.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
-              </select>
+              <div className="flex items-center gap-2">
+                <Layout size={12} className="text-slate-400" />
+                <select value={selectedDashboard} onChange={e => setSelectedDashboard(e.target.value)} className="bg-slate-50 border-none px-3 py-1.5 rounded-xl text-[10px] font-black text-slate-700 outline-none cursor-pointer">
+                  <option value="">Análisis por Tablero</option>
+                  {dashboardTypes.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+                </select>
+              </div>
 
               <button onClick={() => { setSelectedPositionId(''); setSelectedDashboard(''); setSelectedUserId(''); setStatsRange('this_month'); setFromDate(''); setToDate(''); }} className="p-2 text-slate-400 hover:text-red-500 bg-slate-50 rounded-xl transition-all" title="Reiniciar Filtros">
                 <Trash size={14} />
