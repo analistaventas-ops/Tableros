@@ -12,12 +12,11 @@ export default function Dashboard({ user, onLogout }) {
     const fetchDashboards = async () => {
       try {
         const res = await api.get('/dashboard');
-        setDashboards(res.data.dashboards || []);
-        if (res.data.dashboards && res.data.dashboards.length > 0) {
-          const firstBoard = res.data.dashboards[0];
-          setActiveDashboard(firstBoard);
-          // Log initial dashboard access
-          api.post('/logs/dashboard', { dashboard_url: firstBoard.dashboard_url }).catch(() => {});
+        const list = res.data.dashboards || [];
+        setDashboards(list);
+        if (list.length > 0 && !activeDashboard) {
+           setActiveDashboard(list[0]);
+           api.post('/logs/dashboard', { dashboard_url: list[0].dashboard_url }).catch(() => {});
         }
       } catch (err) {
         console.error("Error fetching dashboards", err);
@@ -33,16 +32,17 @@ export default function Dashboard({ user, onLogout }) {
     } else {
       fetchDashboards();
     }
+  }, [user]);
 
-    // NEW: Heartbeat for measuring time spent
+  // NEW: Heartbeat for measuring time spent
+  useEffect(() => {
     const interval = setInterval(() => {
       if (!showMonitoring && activeDashboard) {
         api.post('/logs/heartbeat', { dashboard_url: activeDashboard.dashboard_url }).catch(() => {});
       }
     }, 30000); // 30 seconds
-
     return () => clearInterval(interval);
-  }, [user, activeDashboard, showMonitoring]);
+  }, [showMonitoring, activeDashboard]);
 
   const canSeeMonitoring = user.role === 'admin' || user.position_name?.toLowerCase().includes('directorio');
 
