@@ -200,8 +200,8 @@ app.get('/api/logs', authenticateToken, async (req, res) => {
       // Filter out LOGIN_PORTAL as requested (not a dashboard access)
       if (session.dashboard_url === 'LOGIN_PORTAL') return false;
 
-      // If viewer is NOT admin, hide admin logs
-      if (req.user.role !== 'admin' && session.users.role === 'admin') return false;
+      // Always exclude admin users from the metrics and logs
+      if (session.users.role === 'admin') return false;
       
       // Filter by dashboard name if requested
       if (dashboard_name && dashboard_name !== '') {
@@ -252,7 +252,7 @@ app.get('/api/stats', authenticateToken, async (req, res) => {
       target_position_id: (position_id || positionId) ? parseInt(position_id || positionId) : null,
       target_dashboard_name: dashboard_name || dashboardName || null,
       target_user_id: (user_id || userId) ? parseInt(user_id || userId) : null,
-      exclude_admins: req.user.role !== 'admin'
+      exclude_admins: true
     });
     
     if (statsError) {
