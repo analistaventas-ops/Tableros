@@ -43,7 +43,7 @@ app.post('/api/login', async (req, res) => {
   
   const { data: user, error } = await db
     .from('users')
-    .select('*, user_positions(positions(name, dashboard_url))')
+    .select('*, user_positions(positions(name))')
     .eq('username', username)
     .single();
 
@@ -82,23 +82,34 @@ app.get('/api/me', authenticateToken, async (req, res) => {
   res.json({
     ...user,
     positions,
-    position_name: positions.length > 0 ? positions.map(p => p.name).join(', ') : null,
-    dashboard_name: positions.length > 0 ? positions.map(p => p.dashboard_name).join(', ') : null
+    position_name: positions.length > 0 ? positions.map(p => p.name).join(', ') : null
   });
 });
 
 app.get('/api/dashboard', authenticateToken, async (req, res) => {
-  const { data, error } = await db
-    .from('users')
-    .select('user_positions(positions(dashboard_url, dashboard_name))')
-    .eq('id', req.user.id)
-    .single();
+  // Get all positions for this user
+  const { data: userPos, error: posErr } = await db
+    .from('user_positions')
+    .select('position_id')
+    .eq('user_id', req.user.id);
 
-  if (error || !data) return res.status(500).json({ error: 'Error getting dashboard data' });
+  if (posErr) return res.status(500).json({ error: 'Error getting user positions' });
+  const positionIds = userPos.map(up => up.position_id);
+
+  if (positionIds.length === 0) return res.json({ dashboards: [] });
+
+  // Get all linked dashboards for these positions
+  const { data: links, error: linkErr } = await db
+    .from('dashboard_links')
+    .select('url, dashboard_types(name)')
+    .in('position_id', positionIds);
+
+  if (linkErr) return res.status(500).json({ error: 'Error getting dashboards' });
   
-  const dashboards = data.user_positions 
-    ? data.user_positions.map(up => up.positions).filter(Boolean) 
-    : [];
+  const dashboards = links.map(link => ({
+    dashboard_url: link.url,
+    dashboard_name: link.dashboard_types ? link.dashboard_types.name : 'Sin Nombre'
+  }));
 
   res.json({ dashboards });
 });
@@ -162,10 +173,70 @@ app.get('/api/stats', authenticateToken, async (req, res) => {
   res.json(data);
 });
 
+// DASHBOARD TYPES CRUD
+app.get('/api/dashboard-types', authenticateToken, async (req, res) => {
+  const { data, error } = await db.from('dashboard_types').select('*').order('name');
+  if (error) return res.status(500).json({ error: 'Database error' });
+  res.json(data);
+});
+
+app.post('/api/dashboard-types', authenticateToken, async (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+  const { name, description } = req.body;
+  const { data, error } = await db.from('dashboard_types').insert({ name, description }).select().single();
+  if (error) return res.status(500).json({ error: 'Database error' });
+  res.json(data);
+});
+
+app.put('/api/dashboard-types/:id', authenticateToken, async (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+  const { name, description } = req.body;
+  const { error } = await db.from('dashboard_types').update({ name, description }).eq('id', req.params.id);
+  if (error) return res.status(500).json({ error: 'Database error' });
+  res.json({ success: true });
+});
+
+app.delete('/api/dashboard-types/:id', authenticateToken, async (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+  const { error } = await db.from('dashboard_types').delete().eq('id', req.params.id);
+  if (error) return res.status(500).json({ error: 'Database error' });
+  res.json({ success: true });
+});
+
+// DASHBOARD LINKS (The Matrix) CRUD
+app.get('/api/dashboard-links', authenticateToken, async (req, res) => {
+  const { data, error } = await db
+    .from('dashboard_links')
+    .select('*, positions(name), dashboard_types(name)');
+  if (error) return res.status(500).json({ error: 'Database error' });
+  res.json(data);
+});
+
+app.post('/api/dashboard-links', authenticateToken, async (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+  const { position_id, dashboard_type_id, url } = req.body;
+  const { data, error } = await db.from('dashboard_links').insert({ position_id, dashboard_type_id, url }).select().single();
+  if (error) return res.status(500).json({ error: 'Database error' });
+  res.json(data);
+});
+
+app.put('/api/dashboard-links/:id', authenticateToken, async (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+  const { position_id, dashboard_type_id, url } = req.body;
+  const { error } = await db.from('dashboard_links').update({ position_id, dashboard_type_id, url }).eq('id', req.params.id);
+  if (error) return res.status(500).json({ error: 'Database error' });
+  res.json({ success: true });
+});
+
+app.delete('/api/dashboard-links/:id', authenticateToken, async (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+  const { error } = await db.from('dashboard_links').delete().eq('id', req.params.id);
+  if (error) return res.status(500).json({ error: 'Database error' });
+  res.json({ success: true });
+});
+
 // POSITIONS CRUD
 app.get('/api/positions', authenticateToken, async (req, res) => {
-  const pName = req.user.position_name || '';
-  if (req.user.role !== 'admin' && !pName.includes('Directorio')) return res.status(403).json({ error: 'Forbidden' });
   const { data, error } = await db.from('positions').select('*').order('name');
   if (error) return res.status(500).json({ error: 'Database error' });
   res.json(data);
@@ -185,26 +256,18 @@ app.post('/api/logs/dashboard', authenticateToken, async (req, res) => {
 
 app.post('/api/positions', authenticateToken, async (req, res) => {
   if (req.user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
-  const { name, dashboard_url, dashboard_name } = req.body;
-  if (!name || !dashboard_url) return res.status(400).json({ error: 'Missing Required fields' });
+  const { name } = req.body;
+  if (!name) return res.status(400).json({ error: 'Missing name' });
   
-  const { data, error } = await db.from('positions').insert({ 
-    name, 
-    dashboard_url, 
-    dashboard_name: dashboard_name || name 
-  }).select().single();
+  const { data, error } = await db.from('positions').insert({ name }).select().single();
   if (error) return res.status(500).json({ error: 'Database error or duplicate name' });
   res.json(data);
 });
 
 app.put('/api/positions/:id', authenticateToken, async (req, res) => {
   if (req.user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
-  const { name, dashboard_url, dashboard_name } = req.body;
-  const { error } = await db.from('positions').update({ 
-    name, 
-    dashboard_url, 
-    dashboard_name 
-  }).eq('id', req.params.id);
+  const { name } = req.body;
+  const { error } = await db.from('positions').update({ name }).eq('id', req.params.id);
   if (error) return res.status(500).json({ error: 'Database error' });
   res.json({ success: true });
 });
@@ -212,9 +275,9 @@ app.put('/api/positions/:id', authenticateToken, async (req, res) => {
 app.delete('/api/positions/:id', authenticateToken, async (req, res) => {
   if (req.user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
   
-  // Check users count
+  // Check users count (via user_positions)
   const { count, error: countErr } = await db
-    .from('users')
+    .from('user_positions')
     .select('*', { count: 'exact', head: true })
     .eq('position_id', req.params.id);
 
