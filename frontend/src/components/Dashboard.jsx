@@ -58,7 +58,7 @@ export default function Dashboard({ user, onLogout }) {
                 onClick={() => setShowMonitoring(true)} 
                 className={`px-3 py-1 text-xs font-bold rounded-md transition ${showMonitoring ? 'bg-white shadow text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
                >
-                 {currentUser.role === 'admin' ? 'Administrar Portal' : 'Seguimiento y Métricas'}
+                 {user.role === 'admin' ? 'Administrar Portal' : 'Seguimiento y Métricas'}
                </button>
             </div>
           )}
