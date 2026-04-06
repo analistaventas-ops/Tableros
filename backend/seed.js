@@ -3,14 +3,14 @@ const bcrypt = require('bcryptjs');
 const db = require('./database'); // Ahora es Supabase
 
 const positionsData = [
-  { name: 'Directorio', dashboard_name: 'Panel de Control - Alta Dirección', dashboard_url: "https://app.powerbi.com/view?r=eyJrIjoiZTZiZmRhZDAtNzY4OS00YmMyLWFhZGQtYmI0NjEwN2IxMzcxIiwidCI6IjI2M2Q5OTY1LThjYWQtNDVkZi1iNDVkLTBkN2QxNjExNGJkOSJ9" },
-  { name: 'Administración', dashboard_name: 'Gestión Administrativa y Finanzas', dashboard_url: "https://app.powerbi.com/view?r=eyJrIjoiNDc4MjUyZTMtZWJhMy00NzE0LWJmNDgtMWZlZjJjY2Y2MWQ1IiwidCI6IjI2M2Q5OTY1LThjYWQtNDVkZi1iNDVkLTBkN2QxNjExNGJkOSJ9" },
-  { name: 'Encargado Ecommerce', dashboard_name: 'Métricas de Venta Online', dashboard_url: "https://app.powerbi.com/view?r=eyJrIjoiYmJiZjFmYTktNzFiMi00ODBhLWFhOWYtNjE5NDlmMWYzZjdmIiwidCI6IjI2M2Q5OTY1LThjYWQtNDVkZi1iNDVkLTBkN2QxNjExNGJkOSJ9" },
-  { name: 'Encargado Colón', dashboard_name: 'Ventas y Stock - Sucursal Colón', dashboard_url: "https://app.powerbi.com/view?r=eyJrIjoiYmMzNWZlZmItM2ViMC00OWI0LTkyZWItOTAxMTdmYjI0YTNhIiwidCI6IjI2M2Q5OTY1LThjYWQtNDVkZi1iNDVkLTBkN2QxNjExNGJkOSJ9" },
-  { name: 'Encargado Recta', dashboard_name: 'Ventas y Stock - Sucursal Recta', dashboard_url: "https://app.powerbi.com/view?r=eyJrIjoiNzRhYjU2NWMtZGQ4ZS00ZDYzLThlMTktMzYxZjExM2U1NTM5IiwidCI6IjI2M2Q5OTY1LThjYWQtNDVkZi1iNDVkLTBkN2QxNjExNGJkOSJ9" },
-  { name: 'Asesor Ecommerce', dashboard_name: 'Monitor de Pedidos Ecommerce', dashboard_url: "https://app.powerbi.com/view?r=eyJrIjoiODE4MjgzNzAtMjQ2Ny00ZWNkLTk2ZDMtMzkzNWNkNWRjZGE0IiwidCI6IjI2M2Q5OTY1LThjYWQtNDVkZi1iNDVkLTBkN2QxNjExNGJkOSJ9" },
-  { name: 'Operativo COLON', dashboard_name: 'Planilla de Trabajo - Colón', dashboard_url: "https://app.powerbi.com/view?r=eyJrIjoiMzAxNmFkZGItMjE4ZC00MjQ1LWEyYjItYjk1Y2Y5ZTE4ZjA2IiwidCI6IjI2M2Q5OTY1LThjYWQtNDVkZi1iNDVkLTBkN2QxNjExNGJkOSJ9" },
-  { name: 'Operativo RECTA', dashboard_name: 'Planilla de Trabajo - Recta', dashboard_url: "https://app.powerbi.com/view?r=eyJrIjoiNTM3MTdjMGYtZTI2Mi00Y2ZlLWI2ZDktMGY5YmE3OTJiMTI4IiwidCI6IjI2M2Q5OTY1LThjYWQtNDVkZi1iNDVkLTBkN2QxNjExNGJkOSJ9" }
+  { name: 'Directorio' },
+  { name: 'Administración' },
+  { name: 'Encargado Ecommerce' },
+  { name: 'Encargado Colón' },
+  { name: 'Encargado Recta' },
+  { name: 'Asesor Ecommerce' },
+  { name: 'Operativo COLON' },
+  { name: 'Operativo RECTA' }
 ];
 
 // ... (datos omitidos por brevedad, usaremos los mismos del archivo original)
@@ -68,7 +68,7 @@ async function seed() {
   const posMap = {};
   posData.forEach(p => posMap[p.name] = p.id);
 
-  // 2. Insertar Usuarios
+  // 2. Insertar Usuarios (Sin position_id, se hará via user_positions)
   const usersToInsert = usersDataRaw.map(u => {
     const salt = bcrypt.genSaltSync(10);
     const hash = bcrypt.hashSync(u.password, salt);
@@ -77,15 +77,27 @@ async function seed() {
       password_hash: hash,
       password_plain: u.password,
       name: u.name,
-      role: u.role,
-      position_id: u.posName ? posMap[u.posName] : null
+      role: u.role
     };
   });
 
-  const { error: userError } = await db.from('users').upsert(usersToInsert, { onConflict: 'username' });
+  const { data: insertedUsers, error: userError } = await db.from('users').upsert(usersToInsert, { onConflict: 'username' }).select();
   if (userError) return console.error("Error seeding users:", userError);
 
-  console.log("Usuarios insertados/actualizados con éxito.");
+  // 3. Crear relaciones User <-> Positions
+  console.log("Usuarios actualizados. Creando relaciones...");
+  const userMap = {};
+  insertedUsers.forEach(u => userMap[u.username] = u.id);
+
+  const relations = usersDataRaw
+    .filter(u => u.posName)
+    .map(u => ({ 
+      user_id: userMap[u.username], 
+      position_id: posMap[u.posName] 
+    }));
+
+  await db.from('user_positions').upsert(relations, { onConflict: 'user_id, position_id' });
+  console.log("Relaciones de puestos creadas con éxito.");
 }
 
 seed();

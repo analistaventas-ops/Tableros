@@ -1,3 +1,20 @@
+-- Cleanup legacy columns if they exist
+DO $$ 
+BEGIN 
+    -- Clean positions table
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='positions' AND column_name='dashboard_name') THEN
+        ALTER TABLE positions DROP COLUMN dashboard_name;
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='positions' AND column_name='dashboard_url') THEN
+        ALTER TABLE positions DROP COLUMN dashboard_url;
+    END IF;
+
+    -- Clean users table (we now use user_positions join table)
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='position_id') THEN
+        ALTER TABLE users DROP COLUMN position_id;
+    END IF;
+END $$;
+
 -- SQL Script to upgrade get_enhanced_stats for Advanced Product Analytics (UTC-3 Focused)
 CREATE OR REPLACE FUNCTION get_enhanced_stats(
     start_date TEXT DEFAULT NULL, 
@@ -47,34 +64,34 @@ BEGIN
     prev_end := curr_start - INTERVAL '1 day';
     prev_start := prev_end - (days_diff - 1) * INTERVAL '1 day';
 
-    -- 1. Base Metrics - Current Period
+    -- 1. Base Metrics - Current Period (Dashboard sessions only)
     SELECT 
-        COALESCE(SUM(duration_minutes), 0),
-        COUNT(*),
-        COUNT(DISTINCT user_id)
+        COALESCE(SUM(s.duration_minutes), 0),
+        COUNT(s.id),
+        COUNT(DISTINCT s.user_id)
     INTO curr_total_minutes, curr_total_sessions, curr_unique_users
     FROM activity_sessions s
+    JOIN dashboard_links dl ON s.dashboard_url = dl.url
     WHERE s.session_date BETWEEN curr_start AND curr_end
       AND (target_user_id IS NULL OR s.user_id = target_user_id)
       AND (target_position_id IS NULL OR EXISTS (SELECT 1 FROM user_positions up WHERE up.user_id = s.user_id AND up.position_id = target_position_id))
       AND (target_dashboard_name IS NULL OR EXISTS (
-          SELECT 1 FROM dashboard_links dl JOIN dashboard_types dt ON dl.dashboard_type_id = dt.id 
-          WHERE dl.url = s.dashboard_url AND dt.name = target_dashboard_name
+          SELECT 1 FROM dashboard_types dt WHERE dl.dashboard_type_id = dt.id AND dt.name = target_dashboard_name
       ));
 
-    -- 2. Base Metrics - Previous Period (for variations)
+    -- 2. Base Metrics - Previous Period (Dashboard sessions only)
     SELECT 
-        COALESCE(SUM(duration_minutes), 0),
-        COUNT(*),
-        COUNT(DISTINCT user_id)
+        COALESCE(SUM(s.duration_minutes), 0),
+        COUNT(s.id),
+        COUNT(DISTINCT s.user_id)
     INTO prev_total_minutes, prev_total_sessions, prev_unique_users
     FROM activity_sessions s
+    JOIN dashboard_links dl ON s.dashboard_url = dl.url
     WHERE s.session_date BETWEEN prev_start AND prev_end
       AND (target_user_id IS NULL OR s.user_id = target_user_id)
       AND (target_position_id IS NULL OR EXISTS (SELECT 1 FROM user_positions up WHERE up.user_id = s.user_id AND up.position_id = target_position_id))
       AND (target_dashboard_name IS NULL OR EXISTS (
-          SELECT 1 FROM dashboard_links dl JOIN dashboard_types dt ON dl.dashboard_type_id = dt.id 
-          WHERE dl.url = s.dashboard_url AND dt.name = target_dashboard_name
+          SELECT 1 FROM dashboard_types dt WHERE dl.dashboard_type_id = dt.id AND dt.name = target_dashboard_name
       ));
 
     -- 3. Global Stats (Adoption & Inactivity)
@@ -84,12 +101,12 @@ BEGIN
     FROM activity_sessions 
     WHERE session_date >= (today_ar - INTERVAL '30 days');
 
-    -- 4. Top Dashboard info
+    -- 4. Top Dashboard info (Excluding non-dashboard activities)
     SELECT dt.name, COUNT(*) as sessions
     INTO top_dashboard_name, top_dashboard_count
     FROM activity_sessions s
-    JOIN dashboard_links dl ON s.dashboard_url = dl.url
-    JOIN dashboard_types dt ON dl.dashboard_type_id = dt.id
+    INNER JOIN dashboard_links dl ON s.dashboard_url = dl.url
+    INNER JOIN dashboard_types dt ON dl.dashboard_type_id = dt.id
     WHERE s.session_date BETWEEN curr_start AND curr_end
     GROUP BY 1
     ORDER BY sessions DESC
@@ -106,23 +123,24 @@ BEGIN
             COALESCE(count, 0) as count
         FROM date_series ds
         LEFT JOIN (
-            SELECT session_date as date, COUNT(*) as count 
-            FROM activity_sessions 
+            SELECT session_date as date, COUNT(s.id) as count 
+            FROM activity_sessions s
+            JOIN dashboard_links dl ON s.dashboard_url = dl.url
             WHERE session_date BETWEEN curr_start AND curr_end
             GROUP BY 1
         ) s ON ds.d = s.date
         ORDER BY ds.d ASC
     ) t;
 
-    -- 6. By Dashboard Breakdown
+    -- 6. By Dashboard Breakdown (Excluding Portal/Login)
     SELECT json_agg(t) INTO by_dashboard_data
     FROM (
         SELECT 
-            COALESCE(dt.name, 'Portal/Login') as name,
+            dt.name as name,
             COUNT(*) as count
         FROM activity_sessions s
-        LEFT JOIN dashboard_links dl ON s.dashboard_url = dl.url
-        LEFT JOIN dashboard_types dt ON dl.dashboard_type_id = dt.id
+        JOIN dashboard_links dl ON s.dashboard_url = dl.url
+        JOIN dashboard_types dt ON dl.dashboard_type_id = dt.id
         WHERE s.session_date BETWEEN curr_start AND curr_end
         GROUP BY 1
         ORDER BY count DESC
@@ -137,6 +155,7 @@ BEGIN
         FROM positions p
         JOIN user_positions up ON p.id = up.position_id
         JOIN activity_sessions s ON up.user_id = s.user_id
+        JOIN dashboard_links dl ON s.dashboard_url = dl.url
         WHERE s.session_date BETWEEN curr_start AND curr_end
         GROUP BY p.name
         ORDER BY count DESC
@@ -150,16 +169,17 @@ BEGIN
             COUNT(*) as user_count
         FROM (
             SELECT 
-                user_id,
+                s.user_id,
                 CASE 
-                    WHEN COUNT(*) = 1 THEN '1 Sesión'
-                    WHEN COUNT(*) BETWEEN 2 AND 5 THEN '2-5 Sesiones'
-                    WHEN COUNT(*) BETWEEN 6 AND 10 THEN '6-10 Sesiones'
+                    WHEN COUNT(s.id) = 1 THEN '1 Sesión'
+                    WHEN COUNT(s.id) BETWEEN 2 AND 5 THEN '2-5 Sesiones'
+                    WHEN COUNT(s.id) BETWEEN 6 AND 10 THEN '6-10 Sesiones'
                     ELSE '+10 Sesiones'
                 END as segment
-            FROM activity_sessions
-            WHERE session_date BETWEEN curr_start AND curr_end
-            GROUP BY user_id
+            FROM activity_sessions s
+            JOIN dashboard_links dl ON s.dashboard_url = dl.url
+            WHERE s.session_date BETWEEN curr_start AND curr_end
+            GROUP BY s.user_id
         ) s
         GROUP BY 1
     ) t;
@@ -173,6 +193,7 @@ BEGIN
             SUM(s.duration_minutes) as minutes
         FROM users u
         JOIN activity_sessions s ON u.id = s.user_id
+        JOIN dashboard_links dl ON s.dashboard_url = dl.url
         WHERE s.session_date BETWEEN curr_start AND curr_end
         GROUP BY 1
         ORDER BY sessions DESC

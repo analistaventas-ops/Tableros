@@ -394,8 +394,8 @@ export default function AdminPanel({ token, user: currentUser }) {
               { label: 'Total Sesiones', val: stats.kpis?.total_sessions || 0, icon: <Activity />, clr: 'indigo', var: stats.kpis?.total_sessions_var },
               { label: 'Avg Sesiones', val: stats.kpis?.sessions_per_user || 0, icon: <Target />, clr: 'amber', var: stats.kpis?.sessions_per_user_var },
               { label: 'Avg Tiempo', val: (stats.kpis?.avg_time_per_session || 0) + 'm', icon: <Clock />, clr: 'purple', var: stats.kpis?.avg_time_per_session_var },
-              { label: 'Top Tablero', val: (stats.by_dashboard || [])[0]?.name || 'N/A', icon: <Star />, clr: 'rose', var: null, sub: `${(stats.by_dashboard || [])[0]?.count || 0} accesos` },
-              { label: 'Inactivos', val: stats.kpis?.inactive_users || 0, icon: <Trash />, clr: 'slate', var: null }
+              { label: 'Top Tablero', val: stats.kpis?.top_dashboard?.name || 'N/A', icon: <Star />, clr: 'rose', var: null, sub: `${stats.kpis?.top_dashboard?.count || 0} accesos` },
+              { label: 'Inactivos', val: stats.kpis?.inactive_users_count || 0, icon: <Trash />, clr: 'slate', var: null }
             ].map((k, i) => {
               const colorMap = {
                 blue: 'bg-blue-50 text-blue-600 border-blue-200',
@@ -407,15 +407,18 @@ export default function AdminPanel({ token, user: currentUser }) {
                 slate: 'bg-slate-50 text-slate-600 border-slate-200'
               };
               const activeClr = colorMap[k.clr] || colorMap.slate;
+              const isTopTablero = k.label === 'Top Tablero';
 
               return (
-                <div key={i} className={`bg-white p-5 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden group hover:${activeClr.split(' ')[2]} transition-all flex flex-col justify-between`}>
+                <div key={i} className={`bg-white p-5 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden group hover:shadow-md transition-all flex flex-col justify-between ${isTopTablero ? 'xl:col-span-1' : ''}`}>
                   <div>
                     <div className={`w-8 h-8 rounded-xl ${activeClr.split(' ')[0]} ${activeClr.split(' ')[1]} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
                       {React.cloneElement(k.icon, { size: 16, strokeWidth: 3 })}
                     </div>
                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{k.label}</p>
-                    <h4 className="text-xl font-black text-slate-800 truncate">{k.val}</h4>
+                    <h4 className={`font-black text-slate-800 ${isTopTablero ? 'text-xs break-words leading-tight uppercase' : 'text-xl truncate'}`}>
+                      {k.val}
+                    </h4>
                   </div>
                   <div className="mt-2 flex items-center justify-between">
                     {k.var !== null && k.var !== undefined ? (
