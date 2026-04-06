@@ -35,7 +35,7 @@ export default function Dashboard({ user, onLogout }) {
     }
   }, [user]);
 
-  const canSeeMonitoring = user.role === 'admin' || user.position_name?.includes('Directorio');
+  const canSeeMonitoring = user.role === 'admin' || user.position_name?.toLowerCase().includes('directorio');
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
