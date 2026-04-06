@@ -62,8 +62,14 @@ app.post('/api/login', async (req, res) => {
     position_name: position_name 
   }, JWT_SECRET, { expiresIn: '8h' });
 
-  // Registro de acceso (log inicial de login)
-  await db.from('access_logs').insert({ user_id: user.id, dashboard_url: 'LOGIN' });
+  // Registro de acceso (log inicial de login en activity_sessions)
+  const today = new Date().toISOString().split('T')[0];
+  await db.from('activity_sessions').upsert({ 
+    user_id: user.id, 
+    dashboard_url: 'LOGIN_PORTAL', 
+    session_date: today,
+    last_ping: new Date().toISOString()
+  }, { onConflict: 'user_id, dashboard_url, session_date' });
 
   res.json({ token, user: { id: user.id, username: user.username, name: user.name, role: user.role, position_name: position_name } });
 });
@@ -301,17 +307,7 @@ app.get('/api/positions', authenticateToken, async (req, res) => {
   res.json(data);
 });
 
-// NEW: Endpoint to log specific dashboard access
-app.post('/api/logs/dashboard', authenticateToken, async (req, res) => {
-  const { dashboard_url } = req.body;
-  if (!dashboard_url) return res.status(400).json({ error: 'Missing URL' });
-  
-  await db.from('access_logs').insert({ 
-    user_id: req.user.id, 
-    dashboard_url: dashboard_url 
-  });
-  res.json({ success: true });
-});
+// Se eliminó el endpoint /api/logs/dashboard por redundancia con el heartbeat
 
 app.post('/api/positions', authenticateToken, async (req, res) => {
   if (req.user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
