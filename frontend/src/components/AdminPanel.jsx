@@ -163,7 +163,9 @@ export default function AdminPanel({ token, user: currentUser }) {
       const res = await api.post(`/users/send-credentials/${id}`);
       alert(res.data.message || "Enviado con éxito");
     } catch (err) {
-      alert(err.response?.data?.error || "Error al enviar");
+      const errorMsg = err.response?.data?.error || "Error al enviar";
+      const details = err.response?.data?.details || "";
+      alert(`${errorMsg} ${details ? ': ' + details : ''} \n\nRecuerda configurar SMTP_USER y SMTP_PASS en Vercel.`);
     }
   };
 

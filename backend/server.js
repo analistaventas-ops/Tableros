@@ -507,7 +507,7 @@ app.post('/api/users/send-credentials/:id', authenticateToken, async (req, res) 
 
   try {
     await transporter.sendMail({
-      from: process.env.SMTP_FROM,
+      from: process.env.SMTP_FROM || process.env.SMTP_USER,
       to: user.email,
       subject: 'Tus credenciales - Portal Neumaticos Pons',
       html: `
