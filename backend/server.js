@@ -160,13 +160,14 @@ app.get('/api/stats', authenticateToken, async (req, res) => {
     return res.status(403).json({ error: 'Forbidden' });
   }
 
-  const { from, to, positionId, dashboardName } = req.query; // Formato esperado: YYYY-MM-DD
+  const { from, to, positionId, dashboardName, userId } = req.query;
   
   const { data, error } = await db.rpc('get_enhanced_stats', { 
     start_date: from || null, 
     end_date: to || null,
     target_position_id: positionId ? parseInt(positionId) : null,
-    target_dashboard_name: dashboardName || null
+    target_dashboard_name: dashboardName || null,
+    target_user_id: userId || null
   });
   
   if (error) {
@@ -175,6 +176,18 @@ app.get('/api/stats', authenticateToken, async (req, res) => {
   }
   
   res.json(data);
+});
+
+// HEARTBEAT for time measurement (every 30s)
+app.post('/api/logs/heartbeat', authenticateToken, async (req, res) => {
+  const { dashboard_url } = req.body;
+  if (!dashboard_url) return res.status(400).json({ error: 'Missing URL' });
+  
+  await db.from('activity_heartbeats').insert({ 
+    user_id: req.user.id, 
+    dashboard_url: dashboard_url 
+  });
+  res.json({ success: true });
 });
 
 // DASHBOARD TYPES CRUD
@@ -295,7 +308,10 @@ app.delete('/api/positions/:id', authenticateToken, async (req, res) => {
 
 // USERS CRUD
 app.get('/api/users', authenticateToken, async (req, res) => {
-  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+  const pName = req.user.position_name || '';
+  if (req.user.role !== 'admin' && !pName.includes('Directorio')) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
   const { data, error } = await db
     .from('users')
     .select('*, user_positions(positions(id, name))')

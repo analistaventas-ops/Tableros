@@ -29,11 +29,20 @@ export default function Dashboard({ user, onLogout }) {
     if (user.role === 'admin') {
       setLoading(false);
       setShowMonitoring(true);
-      fetchDashboards(); // Admins might want to see their own boards too
+      fetchDashboards();
     } else {
       fetchDashboards();
     }
-  }, [user]);
+
+    // NEW: Heartbeat for measuring time spent
+    const interval = setInterval(() => {
+      if (!showMonitoring && activeDashboard) {
+        api.post('/logs/heartbeat', { dashboard_url: activeDashboard.dashboard_url }).catch(() => {});
+      }
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+  }, [user, activeDashboard, showMonitoring]);
 
   const canSeeMonitoring = user.role === 'admin' || user.position_name?.toLowerCase().includes('directorio');
 

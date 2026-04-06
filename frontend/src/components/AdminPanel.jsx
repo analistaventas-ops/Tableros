@@ -25,6 +25,7 @@ export default function AdminPanel({ token, user: currentUser }) {
   const [statsRange, setStatsRange] = useState('7d');
   const [selectedPositionId, setSelectedPositionId] = useState('');
   const [selectedDashboard, setSelectedDashboard] = useState('');
+  const [selectedUserId, setSelectedUserId] = useState('');
   
   const [showUserModal, setShowUserModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
@@ -54,6 +55,7 @@ export default function AdminPanel({ token, user: currentUser }) {
       if (fromDate) queryParams.append('from', fromDate);
       if (selectedPositionId) queryParams.append('positionId', selectedPositionId);
       if (selectedDashboard) queryParams.append('dashboardName', selectedDashboard);
+      if (selectedUserId) queryParams.append('userId', selectedUserId);
       
       const query = queryParams.toString() ? `?${queryParams.toString()}` : '';
       const isDirectorio = currentUser.position_name?.includes('Directorio');
@@ -74,19 +76,23 @@ export default function AdminPanel({ token, user: currentUser }) {
         setLogs(lRes.data);
         setStats(sRes.data || { by_position: [], over_time: [], top_users: [] });
       } else {
-        const [pRes, lRes, sRes] = await Promise.all([
+        const [pRes, lRes, sRes, uRes] = await Promise.all([
           isDirectorio ? api.get('/positions') : Promise.resolve({ data: [] }),
           api.get('/logs'),
-          api.get(`/stats${query}`)
+          api.get(`/stats${query}`),
+          isDirectorio ? api.get('/users') : Promise.resolve({ data: [] })
         ]);
-        if (isDirectorio) setPositions(pRes.data);
+        if (isDirectorio) {
+          setPositions(pRes.data);
+          setUsers(uRes.data);
+        }
         setLogs(lRes.data);
         setStats(sRes.data || { by_position: [], over_time: [], top_users: [] });
       }
     } catch (err) { console.error("Fetch error:", err); }
   };
 
-  useEffect(() => { fetchData() }, [token, statsRange, selectedPositionId, selectedDashboard]);
+  useEffect(() => { fetchData() }, [token, statsRange, selectedPositionId, selectedDashboard, selectedUserId]);
 
   // USERS HANDLERS
   const handleUserModal = (u = null) => {
@@ -355,20 +361,22 @@ export default function AdminPanel({ token, user: currentUser }) {
       {activeTab === 'logs' && (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
           {/* BARRA DE FILTROS AVANZADA */}
-          <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap items-end gap-6">
-            <div className="flex-1 min-w-[200px]">
+          {/* BARRA DE FILTROS AVANZADA */}
+          <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 flex flex-wrap items-end gap-4">
+            
+            <div className="flex-1 min-w-[180px]">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Rango Temporal</label>
-              <div className="flex gap-1 bg-slate-50 p-1 rounded-xl border">
+              <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
                 {[
-                  { id: '7d', label: '7 días' },
-                  { id: '30d', label: '30 días' },
-                  { id: 'month', label: 'Mes actual' },
-                  { id: 'all', label: 'Histórico' }
+                  { id: '7d', label: '7d' },
+                  { id: '30d', label: '30d' },
+                  { id: 'month', label: 'Mes' },
+                  { id: 'all', label: 'Todo' }
                 ].map(r => (
                   <button 
                     key={r.id} 
                     onClick={() => setStatsRange(r.id)} 
-                    className={`flex-1 px-3 py-2 text-[10px] font-bold rounded-lg transition-all ${statsRange === r.id ? 'bg-white shadow-sm text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
+                    className={`flex-1 py-1.5 text-[10px] font-black rounded-lg transition-all ${statsRange === r.id ? 'bg-white shadow-sm text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
                   >
                     {r.label}
                   </button>
@@ -377,11 +385,23 @@ export default function AdminPanel({ token, user: currentUser }) {
             </div>
 
             <div className="flex-1 min-w-[200px]">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2 flex items-center gap-2"><Filter size={10} /> Filtrar por Puesto</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2 flex items-center gap-2"><Users size={10} /> Colaborador</label>
+              <select 
+                value={selectedUserId} 
+                onChange={e => setSelectedUserId(e.target.value)}
+                className="w-full bg-slate-50 border p-2.5 rounded-xl text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-100 transition-all cursor-pointer"
+              >
+                <option value="">Todos los usuarios</option>
+                {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+              </select>
+            </div>
+
+            <div className="flex-1 min-w-[200px]">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2 flex items-center gap-2"><Briefcase size={10} /> Puesto</label>
               <select 
                 value={selectedPositionId} 
                 onChange={e => setSelectedPositionId(e.target.value)}
-                className="w-full bg-slate-50 border p-2.5 rounded-xl text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-100 transition-all"
+                className="w-full bg-slate-50 border p-2.5 rounded-xl text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-100 transition-all cursor-pointer"
               >
                 <option value="">Todos los puestos</option>
                 {positions.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -389,11 +409,11 @@ export default function AdminPanel({ token, user: currentUser }) {
             </div>
 
             <div className="flex-1 min-w-[200px]">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2 flex items-center gap-2"><Layout size={10} /> Filtrar por Tablero</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2 flex items-center gap-2"><Layout size={10} /> Tablero</label>
               <select 
                 value={selectedDashboard} 
                 onChange={e => setSelectedDashboard(e.target.value)}
-                className="w-full bg-slate-50 border p-2.5 rounded-xl text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-100 transition-all"
+                className="w-full bg-slate-50 border p-2.5 rounded-xl text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-100 transition-all cursor-pointer"
               >
                 <option value="">Todos los conceptos</option>
                 {dashboardTypes.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
@@ -401,30 +421,36 @@ export default function AdminPanel({ token, user: currentUser }) {
             </div>
             
             <button 
-              onClick={() => { setSelectedPositionId(''); setSelectedDashboard(''); setStatsRange('7d'); }}
-              className="px-4 py-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all group"
+              onClick={() => { setSelectedPositionId(''); setSelectedDashboard(''); setStatsRange('7d'); setSelectedUserId(''); }}
+              className="p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all border border-transparent hover:border-red-100"
               title="Limpiar Filtros"
             >
-              <Trash2 size={18} className="group-hover:scale-110 transition-transform" />
+              <Trash2 size={20} />
             </button>
           </div>
 
           {/* GRID DE KPIS CANÓNICOS */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              { label: 'Total Accesos', value: stats.kpis?.total_logins, icon: Activity, color: 'text-blue-600', bg: 'bg-blue-50' },
-              { label: 'Usuarios Únicos', value: stats.kpis?.unique_users, icon: Users, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-              { label: 'Tableros Activos', value: dashboardLinks.length, icon: Layout, color: 'text-purple-600', bg: 'bg-purple-50' },
-              { label: 'Roles de Empresa', value: positions.length, icon: Briefcase, color: 'text-orange-600', bg: 'bg-orange-50' }
-            ].map((kpi, i) => (
-              <div key={i} className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex items-center gap-5 group hover:shadow-md transition-all">
-                <div className={`${kpi.bg} ${kpi.color} p-4 rounded-2xl group-hover:scale-110 transition-transform`}><kpi.icon size={24} /></div>
-                <div>
-                  <div className={`text-2xl font-black ${kpi.color}`}>{kpi.value || 0}</div>
-                  <div className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{kpi.label}</div>
+                <div className="bg-slate-50 border p-6 rounded-3xl flex flex-col items-center justify-center gap-2">
+                  <div className="bg-blue-100 p-2 rounded-lg text-blue-600"><TrendingUp size={20} /></div>
+                  <div className="text-3xl font-black text-slate-800">{stats.kpis?.total_logins}</div>
+                  <div className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Total Accesos</div>
                 </div>
-              </div>
-            ))}
+                <div className="bg-slate-50 border p-6 rounded-3xl flex flex-col items-center justify-center gap-2">
+                  <div className="bg-emerald-100 p-2 rounded-lg text-emerald-600"><Users size={20} /></div>
+                  <div className="text-3xl font-black text-slate-800">{stats.kpis?.unique_users}</div>
+                  <div className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Usuarios Únicos</div>
+                </div>
+                <div className="bg-slate-50 border p-6 rounded-3xl flex flex-col items-center justify-center gap-2">
+                  <div className="bg-violet-100 p-2 rounded-lg text-violet-600"><TrendingUp size={20} /></div>
+                  <div className="text-3xl font-black text-slate-800">{stats.kpis?.total_hours || 0}h</div>
+                  <div className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Tiempo de Uso</div>
+                </div>
+                <div className="bg-slate-50 border p-6 rounded-3xl flex flex-col items-center justify-center gap-2">
+                  <div className="bg-slate-100 p-2 rounded-lg text-slate-600"><Layout size={20} /></div>
+                  <div className="text-3xl font-black text-slate-800">{dashboardTypes.length}</div>
+                  <div className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Tableros Activos</div>
+                </div>
           </div>
 
           {/* DASHBOARD DE ANÁLISIS VISUAL */}
@@ -511,7 +537,10 @@ export default function AdminPanel({ token, user: currentUser }) {
                             <div className="text-[10px] font-bold text-slate-400">Total interacciones</div>
                           </div>
                         </div>
-                        <div className="bg-slate-100 px-4 py-2 rounded-xl text-sm font-black text-slate-600">{u.count}</div>
+                        <div className="text-right">
+                          <div className="bg-slate-100 px-4 py-2 rounded-xl text-sm font-black text-slate-600">{u.count} <span className="text-[10px] font-bold text-slate-400 ml-1">vistas</span></div>
+                          <div className="text-[10px] font-black text-emerald-600 mt-1 flex items-center justify-end gap-1"><Activity size={10} /> {Math.round(u.minutes || 0)}m uso</div>
+                        </div>
                      </div>
                    ))}
                  </div>
