@@ -20,7 +20,7 @@ export default function AdminPanel({ token, user: currentUser }) {
   const [dashboardTypes, setDashboardTypes] = useState([]);
   const [dashboardLinks, setDashboardLinks] = useState([]);
   const [logs, setLogs] = useState([]);
-  const [stats, setStats] = useState({ by_position: [], over_time: [], top_users: [] });
+  const [stats, setStats] = useState({ kpis: {}, by_position: [], over_time: [], by_dashboard: [], top_users: [] });
   const [activeTab, setActiveTab] = useState(currentUser.role === 'admin' ? 'users' : 'logs');
   const [statsRange, setStatsRange] = useState('7d');
   const [selectedPositionId, setSelectedPositionId] = useState('');
@@ -74,7 +74,7 @@ export default function AdminPanel({ token, user: currentUser }) {
         setDashboardTypes(tRes.data);
         setDashboardLinks(lkRes.data);
         setLogs(lRes.data);
-        setStats(sRes.data || { by_position: [], over_time: [], top_users: [] });
+        setStats(sRes.data || { kpis: {}, by_position: [], over_time: [], by_dashboard: [], top_users: [] });
       } else {
         const [pRes, lRes, sRes, uRes] = await Promise.all([
           isDirectorio ? api.get('/positions') : Promise.resolve({ data: [] }),
@@ -87,7 +87,7 @@ export default function AdminPanel({ token, user: currentUser }) {
           setUsers(uRes.data);
         }
         setLogs(lRes.data);
-        setStats(sRes.data || { by_position: [], over_time: [], top_users: [] });
+        setStats(sRes.data || { kpis: {}, by_position: [], over_time: [], by_dashboard: [], top_users: [] });
       }
     } catch (err) { console.error("Fetch error:", err); }
   };
@@ -433,8 +433,8 @@ export default function AdminPanel({ token, user: currentUser }) {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div className="bg-slate-50 border p-6 rounded-3xl flex flex-col items-center justify-center gap-2">
                   <div className="bg-blue-100 p-2 rounded-lg text-blue-600"><TrendingUp size={20} /></div>
-                  <div className="text-3xl font-black text-slate-800">{stats.kpis?.total_logins}</div>
-                  <div className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Total Accesos</div>
+                  <div className="text-3xl font-black text-slate-800">{stats.kpis?.total_hours || 0}h</div>
+                  <div className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Total Horas de Uso</div>
                 </div>
                 <div className="bg-slate-50 border p-6 rounded-3xl flex flex-col items-center justify-center gap-2">
                   <div className="bg-emerald-100 p-2 rounded-lg text-emerald-600"><Users size={20} /></div>
@@ -442,9 +442,9 @@ export default function AdminPanel({ token, user: currentUser }) {
                   <div className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Usuarios Únicos</div>
                 </div>
                 <div className="bg-slate-50 border p-6 rounded-3xl flex flex-col items-center justify-center gap-2">
-                  <div className="bg-violet-100 p-2 rounded-lg text-violet-600"><TrendingUp size={20} /></div>
-                  <div className="text-3xl font-black text-slate-800">{stats.kpis?.total_hours || 0}h</div>
-                  <div className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Tiempo de Uso</div>
+                  <div className="bg-violet-100 p-2 rounded-lg text-violet-600"><Activity size={20} /></div>
+                  <div className="text-3xl font-black text-slate-800">{(stats.top_users || []).length}</div>
+                  <div className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Usuarios más Activos</div>
                 </div>
                 <div className="bg-slate-50 border p-6 rounded-3xl flex flex-col items-center justify-center gap-2">
                   <div className="bg-slate-100 p-2 rounded-lg text-slate-600"><Layout size={20} /></div>
@@ -538,8 +538,8 @@ export default function AdminPanel({ token, user: currentUser }) {
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="bg-slate-100 px-4 py-2 rounded-xl text-sm font-black text-slate-600">{u.count} <span className="text-[10px] font-bold text-slate-400 ml-1">vistas</span></div>
-                          <div className="text-[10px] font-black text-emerald-600 mt-1 flex items-center justify-end gap-1"><Activity size={10} /> {Math.round(u.minutes || 0)}m uso</div>
+                          <div className="bg-slate-100 px-4 py-2 rounded-xl text-sm font-black text-slate-600">{Math.round(u.minutes || 0)} <span className="text-[10px] font-bold text-slate-400 ml-1">minutos</span></div>
+                          <div className="text-[10px] font-black text-emerald-600 mt-1 flex items-center justify-end gap-1"><Activity size={10} /> {u.sessions || 0} sesiones</div>
                         </div>
                      </div>
                    ))}
