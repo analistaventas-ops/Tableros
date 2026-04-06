@@ -364,69 +364,86 @@ export default function AdminPanel({ token, user: currentUser }) {
           {/* BARRA DE FILTROS AVANZADA */}
           <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 flex flex-wrap items-end gap-4">
             
-            <div className="flex-1 min-w-[180px]">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Rango Temporal</label>
+            {/* Rango Temporal */}
+            <div className="flex-1 min-w-[150px]">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Período</label>
               <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
-                {[
-                  { id: '7d', label: '7d' },
-                  { id: '30d', label: '30d' },
-                  { id: 'month', label: 'Mes' },
-                  { id: 'all', label: 'Todo' }
-                ].map(r => (
-                  <button 
-                    key={r.id} 
-                    onClick={() => setStatsRange(r.id)} 
-                    className={`flex-1 py-1.5 text-[10px] font-black rounded-lg transition-all ${statsRange === r.id ? 'bg-white shadow-sm text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
-                  >
-                    {r.label}
-                  </button>
+                {[{ id: '7d', label: '7d' }, { id: '30d', label: '30d' }, { id: 'month', label: 'Mes' }, { id: 'all', label: 'Todo' }].map(r => (
+                  <button key={r.id} onClick={() => setStatsRange(r.id)} className={`flex-1 py-1.5 text-[10px] font-black rounded-lg transition-all ${statsRange === r.id ? 'bg-white shadow-sm text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}>{r.label}</button>
                 ))}
               </div>
             </div>
 
-            <div className="flex-1 min-w-[200px]">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2 flex items-center gap-2"><Users size={10} /> Colaborador</label>
-              <select 
-                value={selectedUserId} 
-                onChange={e => setSelectedUserId(e.target.value)}
-                className="w-full bg-slate-50 border p-2.5 rounded-xl text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-100 transition-all cursor-pointer"
-              >
-                <option value="">Todos los usuarios</option>
-                {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-              </select>
-            </div>
-
-            <div className="flex-1 min-w-[200px]">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2 flex items-center gap-2"><Briefcase size={10} /> Puesto</label>
-              <select 
-                value={selectedPositionId} 
-                onChange={e => setSelectedPositionId(e.target.value)}
-                className="w-full bg-slate-50 border p-2.5 rounded-xl text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-100 transition-all cursor-pointer"
-              >
-                <option value="">Todos los puestos</option>
-                {positions.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-            </div>
-
-            <div className="flex-1 min-w-[200px]">
+            {/* Tablero (Filtro 1) */}
+            <div className="flex-1 min-w-[180px]">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2 flex items-center gap-2"><Layout size={10} /> Tablero</label>
               <select 
                 value={selectedDashboard} 
                 onChange={e => setSelectedDashboard(e.target.value)}
-                className="w-full bg-slate-50 border p-2.5 rounded-xl text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-100 transition-all cursor-pointer"
+                className="w-full bg-slate-50 border p-2.5 rounded-xl text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-100"
               >
-                <option value="">Todos los conceptos</option>
-                {dashboardTypes.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+                <option value="">Cualquier Tablero</option>
+                {dashboardTypes
+                  .filter(t => {
+                    // Filter dashboards by selected position
+                    if (selectedPositionId && !dashboardLinks.some(lk => lk.position_id === parseInt(selectedPositionId) && lk.dashboard_type_id === t.id)) return false;
+                    // Filter dashboards by selected user
+                    if (selectedUserId) {
+                      const user = users.find(u => u.id === parseInt(selectedUserId));
+                      if (user && !dashboardLinks.some(lk => user.position_ids?.includes(lk.position_id) && lk.dashboard_type_id === t.id)) return false;
+                    }
+                    return true;
+                  })
+                  .map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+              </select>
+            </div>
+
+            {/* Puesto (Filtro 2) */}
+            <div className="flex-1 min-w-[180px]">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2 flex items-center gap-2"><Briefcase size={10} /> Puesto</label>
+              <select 
+                value={selectedPositionId} 
+                onChange={e => setSelectedPositionId(e.target.value)}
+                className="w-full bg-slate-50 border p-2.5 rounded-xl text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-100"
+              >
+                <option value="">Cualquier Puesto</option>
+                {positions
+                  .filter(p => {
+                    // Filter positions by selected dashboard
+                    if (selectedDashboard && !dashboardLinks.some(lk => lk.position_id === p.id && lk.dashboard_types?.name === selectedDashboard)) return false;
+                    // Filter positions by selected user
+                    if (selectedUserId) {
+                      const user = users.find(u => u.id === parseInt(selectedUserId));
+                      if (user && !user.position_ids?.includes(p.id)) return false;
+                    }
+                    return true;
+                  })
+                  .map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </div>
+
+            {/* Colaborador (Filtro 3) */}
+            <div className="flex-1 min-w-[180px]">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2 flex items-center gap-2"><Users size={10} /> Colaborador</label>
+              <select 
+                value={selectedUserId} 
+                onChange={e => setSelectedUserId(e.target.value)}
+                className="w-full bg-slate-50 border p-2.5 rounded-xl text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-100"
+              >
+                <option value="">Cualquier Colaborador</option>
+                {users
+                  .filter(u => {
+                    // Filter users by selected position
+                    if (selectedPositionId && !u.position_ids?.includes(parseInt(selectedPositionId))) return false;
+                    // Filter users by selected dashboard
+                    if (selectedDashboard && !dashboardLinks.some(lk => u.position_ids?.includes(lk.position_id) && lk.dashboard_types?.name === selectedDashboard)) return false;
+                    return true;
+                  })
+                  .map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
               </select>
             </div>
             
-            <button 
-              onClick={() => { setSelectedPositionId(''); setSelectedDashboard(''); setStatsRange('7d'); setSelectedUserId(''); }}
-              className="p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all border border-transparent hover:border-red-100"
-              title="Limpiar Filtros"
-            >
-              <Trash2 size={20} />
-            </button>
+            <button onClick={() => { setSelectedPositionId(''); setSelectedDashboard(''); setSelectedUserId(''); }} className="p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all border border-transparent hover:border-red-100" title="Borrar Filtros"><Trash2 size={20} /></button>
           </div>
 
           {/* GRID DE KPIS CANÓNICOS */}
@@ -554,7 +571,7 @@ export default function AdminPanel({ token, user: currentUser }) {
             <div className="p-6 border-b flex items-center justify-between bg-slate-50/50">
               <div className="flex items-center gap-3">
                 <div className="bg-slate-800 p-2 rounded-lg text-white"><Calendar size={18} /></div>
-                <h3 className="font-bold text-slate-800">Historial Detallado (Últimos 100)</h3>
+                <h3 className="font-bold text-slate-800">Sesiones de Actividad Detalladas</h3>
               </div>
             </div>
             <div className="overflow-x-auto">
@@ -562,20 +579,38 @@ export default function AdminPanel({ token, user: currentUser }) {
                 <thead>
                   <tr className="bg-slate-50/50 text-slate-400 text-[10px] uppercase tracking-widest font-black border-b">
                     <th className="p-4 pl-8">Colaborador</th>
-                    <th className="p-4">Puesto</th>
-                    <th className="p-4">Fecha y Hora</th>
-                    <th className="p-4">Acción / Tablero</th>
+                    <th className="p-4">Tablero / Link</th>
+                    <th className="p-4">Inició / Último Latido</th>
+                    <th className="p-4">Tiempo Total</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y text-xs">
-                  {logs.map(log => (
-                    <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="p-4 pl-8 font-bold text-slate-700">{log.name} <span className="text-slate-400 font-normal">({log.username})</span></td>
-                      <td className="p-4"><span className="text-slate-500">{log.position_name}</span></td>
-                      <td className="p-4 text-slate-400 font-medium">{format(new Date(log.login_time), 'dd MMM, HH:mm', { locale: es })}</td>
+                  {logs.map(session => (
+                    <tr key={session.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="p-4 pl-8 font-bold text-slate-700">{session.name}</td>
                       <td className="p-4">
-                        <span className={`px-2 py-1 rounded-md font-bold text-[10px] ${log.dashboard_url === 'LOGIN' ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
-                          {log.dashboard_url === 'LOGIN' ? '🚀 INICIO SESIÓN' : '📊 VIO TABLERO'}
+                        <div className="flex flex-col gap-1">
+                          <span className="bg-purple-50 text-purple-600 px-2 py-0.5 rounded text-[10px] font-bold border border-purple-100 self-start">
+                            {session.dashboard_name}
+                          </span>
+                          <a 
+                            href={session.dashboard_url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-[10px] text-blue-500 hover:underline truncate max-w-[200px]"
+                            title={session.dashboard_url}
+                          >
+                            {session.dashboard_url.substring(0, 40)}...
+                          </a>
+                        </div>
+                      </td>
+                      <td className="p-4 text-slate-400 font-medium">
+                        {session.start_time ? format(new Date(session.start_time), 'HH:mm', { locale: es }) : '--:--'} {' → '} 
+                        {session.last_ping ? format(new Date(session.last_ping), 'HH:mm', { locale: es }) : '--:--'}
+                      </td>
+                      <td className="p-4">
+                        <span className="px-2 py-1 rounded-md font-bold text-[10px] bg-emerald-50 text-emerald-600 border border-emerald-100">
+                          {session.duration_minutes || 0} min
                         </span>
                       </td>
                     </tr>

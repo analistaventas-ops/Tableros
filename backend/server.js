@@ -120,33 +120,51 @@ app.get('/api/logs', authenticateToken, async (req, res) => {
     return res.status(403).json({ error: 'Forbidden' });
   }
   
+  // Query activity_sessions for the detailed audit table
   const { data, error } = await db
-    .from('access_logs')
+    .from('activity_sessions')
     .select(`
       id,
-      login_time,
+      start_time,
+      last_ping,
+      duration_minutes,
       dashboard_url,
+      session_date,
       users (
-        username,
         name,
         user_positions (
           positions (name)
         )
       )
     `)
-    .order('login_time', { ascending: false })
+    .order('last_ping', { ascending: false })
     .limit(100);
 
-  if (error) return res.status(500).json({ error: 'Database error' });
+  if (error) {
+    console.error("Logs Error:", error);
+    return res.status(500).json({ error: 'Database error fetching sessions' });
+  }
   
-  const formatted = data.map(log => {
-    const userPositions = log.users.user_positions ? log.users.user_positions.map(up => up.positions?.name).filter(Boolean) : [];
+  // We need to match dashboard_url with a name. 
+  // We'll fetch dashboard_links to map URLs to names.
+  const { data: links } = await db.from('dashboard_links').select('url, dashboard_types(name)');
+  const urlToName = {};
+  if (links) {
+    links.forEach(lk => {
+      urlToName[lk.url] = lk.dashboard_types?.name || 'Desconocido';
+    });
+  }
+
+  const formatted = data.map(session => {
+    const userPositions = session.users.user_positions ? session.users.user_positions.map(up => up.positions?.name).filter(Boolean) : [];
     return {
-      id: log.id,
-      username: log.users.username,
-      name: log.users.name,
-      login_time: log.login_time,
-      dashboard_url: log.dashboard_url,
+      id: session.id,
+      name: session.users.name,
+      start_time: session.start_time,
+      last_ping: session.last_ping,
+      duration_minutes: session.duration_minutes,
+      dashboard_url: session.dashboard_url,
+      dashboard_name: urlToName[session.dashboard_url] || 'General',
       position_name: userPositions.join(', ')
     };
   });
