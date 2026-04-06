@@ -67,9 +67,9 @@ export default function AdminPanel({ token, user: currentUser }) {
       if (selectedUserId) queryParams.append('userId', selectedUserId);
       
       const query = queryParams.toString() ? `?${queryParams.toString()}` : '';
-      const isDirectorio = user.position_name?.toLowerCase().includes('directorio');
+      const isDirectorio = currentUser.position_name?.toLowerCase().includes('directorio');
       
-      if (user.role === 'admin') {
+      if (currentUser.role === 'admin') {
         const [uRes, pRes, tRes, lkRes, lRes, sRes] = await Promise.all([
           api.get('/users'),
           api.get('/positions'),

@@ -24,6 +24,11 @@ app.use((req, res, next) => {
   next();
 });
 
+// Helper for Argentine Date (UTC-3)
+function getTodayAr() {
+  return new Intl.DateTimeFormat('fr-CA', {timeZone: 'America/Argentina/Buenos_Aires'}).format(new Date());
+}
+
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 
@@ -63,11 +68,12 @@ app.post('/api/login', async (req, res) => {
   }, JWT_SECRET, { expiresIn: '8h' });
 
   // Registro de acceso (log inicial de login en activity_sessions)
-  const today = new Date().toISOString().split('T')[0];
+  const today = getTodayAr();
   await db.from('activity_sessions').upsert({ 
     user_id: user.id, 
     dashboard_url: 'LOGIN_PORTAL', 
     session_date: today,
+    duration_minutes: 1, // Start with 1 min to show in charts immediately
     last_ping: new Date().toISOString()
   }, { onConflict: 'user_id, dashboard_url, session_date' });
 
@@ -207,7 +213,7 @@ app.post('/api/logs/heartbeat', authenticateToken, async (req, res) => {
   const { dashboard_url } = req.body;
   if (!dashboard_url) return res.status(400).json({ error: 'Missing URL' });
   
-  const today = new Date().toISOString().split('T')[0];
+  const today = getTodayAr();
   
   // UPSERT logic: if session exists for today/user/dashboard, increment duration. Otherwise create.
   // Note: we assume +1 minute (actually 30s but we count by pings)
