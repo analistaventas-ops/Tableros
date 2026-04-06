@@ -111,7 +111,8 @@ BEGIN
     FROM activity_sessions s
     INNER JOIN dashboard_links dl ON s.dashboard_url = dl.url
     INNER JOIN dashboard_types dt ON dl.dashboard_type_id = dt.id
-    WHERE s.session_date BETWEEN curr_start AND curr_end
+    WHERE dt.name NOT IN ('Portal/login', 'Admin')
+    AND s.session_date BETWEEN curr_start AND curr_end
     AND (NOT exclude_admins OR s.user_id NOT IN (SELECT id FROM users WHERE role = 'admin'))
     GROUP BY 1
     ORDER BY sessions DESC
@@ -130,7 +131,6 @@ BEGIN
         LEFT JOIN (
             SELECT session_date as date, COUNT(s.id) as count 
             FROM activity_sessions s
-            JOIN dashboard_links dl ON s.dashboard_url = dl.url
             WHERE session_date BETWEEN curr_start AND curr_end
             AND (NOT exclude_admins OR s.user_id NOT IN (SELECT id FROM users WHERE role = 'admin'))
             GROUP BY 1
@@ -138,7 +138,7 @@ BEGIN
         ORDER BY ds.d ASC
     ) t;
 
-    -- 6. By Dashboard Breakdown (Excluding Portal/Login)
+    -- 6. By Dashboard Breakdown (Excluding non-dashboard entries like Portal/login)
     SELECT json_agg(t) INTO by_dashboard_data
     FROM (
         SELECT 
@@ -147,7 +147,8 @@ BEGIN
         FROM activity_sessions s
         JOIN dashboard_links dl ON s.dashboard_url = dl.url
         JOIN dashboard_types dt ON dl.dashboard_type_id = dt.id
-        WHERE s.session_date BETWEEN curr_start AND curr_end
+        WHERE dt.name NOT IN ('Portal/login', 'Admin')
+        AND s.session_date BETWEEN curr_start AND curr_end
         AND (NOT exclude_admins OR s.user_id NOT IN (SELECT id FROM users WHERE role = 'admin'))
         GROUP BY 1
         ORDER BY count DESC

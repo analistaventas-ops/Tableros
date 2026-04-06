@@ -78,38 +78,43 @@ export default function AdminPanel({ token, user: currentUser }) {
       if (selectedUserId) queryParams.append('user_id', selectedUserId);
 
       const query = queryParams.toString() ? `?${queryParams.toString()}` : '';
-      const isDirectorio = currentUser.position_name?.toLowerCase().includes('directorio');
+      const isDirectorio = currentUser?.position_name?.toLowerCase().includes('directorio');
       
-      if (currentUser.role === 'admin') {
+      if (currentUser?.role === 'admin') {
+        // We fetch independently or use a safe Promise.all pattern
         const [uRes, pRes, tRes, lkRes, lRes, sRes] = await Promise.all([
-          api.get('/users'),
-          api.get('/positions'),
-          api.get('/dashboard-types'),
-          api.get('/dashboard-links'),
-          api.get('/logs' + query),
-          api.get('/stats' + query)
+          api.get('/users').catch(e => ({ data: [] })),
+          api.get('/positions').catch(e => ({ data: [] })),
+          api.get('/dashboard-types').catch(e => ({ data: [] })),
+          api.get('/dashboard-links').catch(e => ({ data: [] })),
+          api.get('/logs' + query).catch(e => ({ data: [] })),
+          api.get('/stats' + query).catch(e => ({ data: null }))
         ]);
-        setUsers(uRes.data);
-        setPositions(pRes.data);
-        setDashboardTypes(tRes.data);
-        setDashboardLinks(lkRes.data);
-        setLogs(lRes.data);
-        setStats(sRes.data || stats);
+        
+        setUsers(Array.isArray(uRes.data) ? uRes.data : []);
+        setPositions(Array.isArray(pRes.data) ? pRes.data : []);
+        setDashboardTypes(Array.isArray(tRes.data) ? tRes.data : []);
+        setDashboardLinks(Array.isArray(lkRes.data) ? lkRes.data : []);
+        setLogs(Array.isArray(lRes.data) ? lRes.data : []);
+        if (sRes.data) setStats(sRes.data);
       } else {
         const [pRes, lRes, sRes, uRes] = await Promise.all([
-          isDirectorio ? api.get('/positions') : Promise.resolve({ data: [] }),
-          api.get('/logs' + query),
-          api.get('/stats' + query),
-          isDirectorio ? api.get('/users') : Promise.resolve({ data: [] })
+          isDirectorio ? api.get('/positions').catch(e => ({ data: [] })) : Promise.resolve({ data: [] }),
+          api.get('/logs' + query).catch(e => ({ data: [] })),
+          api.get('/stats' + query).catch(e => ({ data: null })),
+          isDirectorio ? api.get('/users').catch(e => ({ data: [] })) : Promise.resolve({ data: [] })
         ]);
+        
         if (isDirectorio) {
-          setPositions(pRes.data);
-          setUsers(uRes.data);
+          setPositions(Array.isArray(pRes.data) ? pRes.data : []);
+          setUsers(Array.isArray(uRes.data) ? uRes.data : []);
         }
-        setLogs(lRes.data);
-        setStats(sRes.data || stats);
+        setLogs(Array.isArray(lRes.data) ? lRes.data : []);
+        if (sRes.data) setStats(sRes.data);
       }
-    } catch (err) { console.error("Fetch error:", err); }
+    } catch (err) { 
+      console.error("Fetch error main catch:", err); 
+    }
   };
 
   useEffect(() => { fetchData() }, [token, statsRange, selectedPositionId, selectedDashboard, selectedUserId, fromDate, toDate]);
@@ -182,8 +187,13 @@ export default function AdminPanel({ token, user: currentUser }) {
 
   return (
     <div className="p-8 bg-slate-50 min-h-screen pb-24">
-      {/* HEADER SECTION */}
-      <div className="flex flex-col md:flex-row justify-end items-start md:items-end mb-8 gap-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-6 pt-4">
+        <div className="flex flex-col">
+          <h2 className="text-3xl font-black text-slate-800 tracking-tighter italic uppercase flex items-center gap-3">
+            {currentUser.name} <span className="text-sm font-bold text-slate-300 not-italic normal-case tracking-normal">| {currentUser.role === 'admin' ? 'Administrador del Sistema' : (currentUser.position_name?.toLowerCase().includes('directorio') ? 'Directorio' : 'Panel de Seguimiento')}</span>
+          </h2>
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mt-1">Status: Conectado • {new Date().toLocaleDateString()}</p>
+        </div>
 
         <div className="flex bg-white rounded-2xl shadow-sm border border-slate-200 p-1.5 gap-1.5 transition-all">
           {currentUser.role === 'admin' && (
@@ -502,31 +512,43 @@ export default function AdminPanel({ token, user: currentUser }) {
                 <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-6 flex items-center gap-2"><UserCheck size={18} className="text-blue-500" /> Auditoría en Tiempo Real</h3>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
-                       <thead className="bg-slate-50 text-[8px] uppercase font-black text-slate-400 border-b">
-                          <tr>
-                             <th className="py-4 px-2">Usuario</th>
-                             <th className="py-4 px-2">Tablero</th>
-                             <th className="py-4 px-2">Time</th>
-                             <th className="py-4 px-2 text-right">Data</th>
-                          </tr>
-                       </thead>
-                       <tbody className="divide-y text-[10px]">
-                          {logs.slice(0, 15).map(s => (
-                            <tr key={s.id} className="hover:bg-slate-50 transition-all font-bold">
-                               <td className="py-4 px-2">
-                                  <div className="text-slate-800 font-black truncate max-w-[100px]">{s.name}</div>
-                                  <div className="text-[8px] text-slate-400 uppercase">{s.position_name}</div>
-                               </td>
-                               <td className="py-4 px-2 font-black text-blue-600 uppercase tracking-tighter">{s.dashboard_name}</td>
-                               <td className="py-4 px-2">
-                                  <span className="bg-slate-100 px-2 py-1 rounded text-[8px] font-black">{s.duration_minutes || 1}m</span>
-                               </td>
-                               <td className="py-4 px-2 text-right text-[8px] font-black text-slate-400">
-                                  {format(new Date(s.start_time), 'HH:mm | dd/MM')}
-                               </td>
-                            </tr>
-                          ))}
-                       </tbody>
+                        <thead className="bg-slate-50 text-[8px] uppercase font-black text-slate-400 border-b">
+                           <tr>
+                              <th className="py-4 px-2">Usuario</th>
+                              <th className="py-4 px-2">Tablero</th>
+                              <th className="py-4 px-2">Time</th>
+                              <th className="py-4 px-2 text-right">Data</th>
+                           </tr>
+                        </thead>
+                        <tbody className="divide-y text-[10px]">
+                          {(logs || []).slice(0, 15).map(s => {
+                             let timeDisplay = '---';
+                             try {
+                               if (s.start_time) {
+                                 const d = new Date(s.start_time);
+                                 if (!isNaN(d.getTime())) {
+                                   timeDisplay = format(d, 'HH:mm | dd/MM');
+                                 }
+                               }
+                             } catch(e) {}
+
+                             return (
+                               <tr key={s.id} className="hover:bg-slate-50 transition-all font-bold">
+                                  <td className="py-4 px-2">
+                                     <div className="text-slate-800 font-black truncate max-w-[100px]">{s.name}</div>
+                                     <div className="text-[8px] text-slate-400 uppercase">{s.position_name}</div>
+                                  </td>
+                                  <td className="py-4 px-2 font-black text-blue-600 uppercase tracking-tighter">{s.dashboard_name}</td>
+                                  <td className="py-4 px-2">
+                                     <span className="bg-slate-100 px-2 py-1 rounded text-[8px] font-black">{s.duration_minutes || 1}m</span>
+                                  </td>
+                                  <td className="py-4 px-2 text-right text-[8px] font-black text-slate-400">
+                                     {timeDisplay}
+                                  </td>
+                               </tr>
+                             );
+                          })}
+                        </tbody>
                     </table>
                 </div>
             </div>

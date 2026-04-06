@@ -131,9 +131,10 @@ app.get('/api/logs', authenticateToken, async (req, res) => {
   if (req.user.role !== 'admin' && !pName.includes('Directorio')) {
     return res.status(403).json({ error: 'Forbidden' });
   }
+  const { start_date, end_date, user_id, position_id, dashboard_name } = req.query;
   
   // Query activity_sessions for the detailed audit table
-  const { data, error } = await db
+  let queryBuilder = db
     .from('activity_sessions')
     .select(`
       id,
@@ -146,16 +147,27 @@ app.get('/api/logs', authenticateToken, async (req, res) => {
         name,
         role,
         user_positions (
-          positions (name)
+          positions (name, id)
         )
       )
-    `)
+    `);
+
+  // Application of filters
+  if (start_date) queryBuilder = queryBuilder.gte('session_date', start_date);
+  if (end_date) queryBuilder = queryBuilder.lte('session_date', end_date);
+  if (user_id) queryBuilder = queryBuilder.eq('user_id', user_id);
+  
+  // Dashboard filtering is tricky because session has URL, not name.
+  // We'll filter it in memory after fetching to keep it simple, OR fetch URLs first.
+  // For now, let's just fetch and filter below.
+
+  const { data, error } = await queryBuilder
     .order('last_ping', { ascending: false })
-    .limit(100);
+    .limit(500); 
 
   if (error) {
     console.error("Logs Error:", error);
-    return res.status(500).json({ error: 'Database error fetching sessions' });
+    return res.status(200).json([]); // Resilient return
   }
   
   // We need to match dashboard_url with a name. 
@@ -170,18 +182,34 @@ app.get('/api/logs', authenticateToken, async (req, res) => {
 
   const formatted = data
     .filter(session => {
+      // Filter out sessions without associated users (db lookup safety)
+      if (!session.users) return false;
+
       // If viewer is NOT admin, hide admin logs
-      if (req.user.role !== 'admin' && session.users?.role === 'admin') return false;
+      if (req.user.role !== 'admin' && session.users.role === 'admin') return false;
+      
+      // Filter by dashboard name if requested
+      if (dashboard_name && dashboard_name !== 'General' && dashboard_name !== '') {
+        const name = urlToName[session.dashboard_url] || 'General';
+        if (name !== dashboard_name) return false;
+      }
+
+      // Filter by position if requested
+      if (position_id) {
+        const pIds = session.users?.user_positions?.map(up => up.positions?.id) || [];
+        if (!pIds.includes(parseInt(position_id))) return false;
+      }
+
       return true;
     })
     .map(session => {
       const userPositions = session.users.user_positions ? session.users.user_positions.map(up => up.positions?.name).filter(Boolean) : [];
       return {
         id: session.id,
-        name: session.users.name,
+        name: session.users.name || 'Usuario Desconocido',
         start_time: session.start_time,
         last_ping: session.last_ping,
-        duration_minutes: session.duration_minutes,
+        duration_minutes: session.duration_minutes || 0,
         dashboard_url: session.dashboard_url,
         dashboard_name: urlToName[session.dashboard_url] || 'General',
         position_name: userPositions.join(', ')
@@ -197,23 +225,31 @@ app.get('/api/stats', authenticateToken, async (req, res) => {
     return res.status(403).json({ error: 'Forbidden' });
   }
 
-  const { from, to, positionId, dashboardName, userId } = req.query;
-  
-  const { data, error } = await db.rpc('get_enhanced_stats', { 
-    start_date: from || null, 
-    end_date: to || null,
-    target_position_id: positionId ? parseInt(positionId) : null,
-    target_dashboard_name: dashboardName || null,
-    target_user_id: userId ? userId : null,
-    exclude_admins: req.user.role !== 'admin'
-  });
-  
-  if (error) {
-    console.error("Stats Error:", error);
-    return res.status(500).json({ error: 'Error fetching dashboard stats' });
+  try {
+    const { 
+      from, to, positionId, dashboardName, userId,
+      start_date, end_date, position_id, dashboard_name, user_id 
+    } = req.query;
+    
+    const { data: statsData, error: statsError } = await db.rpc('get_enhanced_stats', { 
+      start_date: start_date || from || null, 
+      end_date: end_date || to || null,
+      target_position_id: (position_id || positionId) ? parseInt(position_id || positionId) : null,
+      target_dashboard_name: dashboard_name || dashboardName || null,
+      target_user_id: (user_id || userId) ? parseInt(user_id || userId) : null,
+      exclude_admins: req.user.role !== 'admin'
+    });
+    
+    if (statsError) {
+      console.error("Stats RPC Error:", statsError);
+      return res.status(200).json(null); 
+    }
+    
+    res.json(statsData);
+  } catch (err) {
+    console.error("Stats processing error:", err);
+    res.status(200).json(null);
   }
-  
-  res.json(data);
 });
 
 // NEW HEARTBEAT: Upsert into activity_sessions to keep DB clean
