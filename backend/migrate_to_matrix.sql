@@ -54,30 +54,24 @@ DECLARE
     total_logins BIGINT;
     unique_users BIGINT;
     over_time_data JSON;
-    over_time_month_data JSON;
     by_position_data JSON;
+    by_dashboard_data JSON;
     top_users_data JSON;
 BEGIN
-    -- Calculate KPIs
-    SELECT COUNT(*) INTO total_logins
+    -- 1. Total Logins & Unique Users (Filtered)
+    SELECT COUNT(al.id), COUNT(DISTINCT al.user_id)
+    INTO total_logins, unique_users
     FROM access_logs al
     JOIN users u ON al.user_id = u.id
     LEFT JOIN user_positions up ON u.id = up.user_id
-    LEFT JOIN positions p ON up.position_id = p.id
+    LEFT JOIN dashboard_links dl ON al.dashboard_url = dl.url
+    LEFT JOIN dashboard_types dt ON dl.dashboard_type_id = dt.id
     WHERE (start_date IS NULL OR al.login_time >= start_date::TIMESTAMPTZ)
       AND (end_date IS NULL OR al.login_time <= end_date::TIMESTAMPTZ)
-      AND (target_position_id IS NULL OR up.position_id = target_position_id);
-      -- Filter by dashboard name is harder now, we skip it for KPIs for now unless specifically asked
+      AND (target_position_id IS NULL OR up.position_id = target_position_id)
+      AND (target_dashboard_name IS NULL OR dt.name = target_dashboard_name);
 
-    SELECT COUNT(DISTINCT al.user_id) INTO unique_users
-    FROM access_logs al
-    JOIN users u ON al.user_id = u.id
-    LEFT JOIN user_positions up ON u.id = up.user_id
-    WHERE (start_date IS NULL OR al.login_time >= start_date::TIMESTAMPTZ)
-      AND (end_date IS NULL OR al.login_time <= end_date::TIMESTAMPTZ)
-      AND (target_position_id IS NULL OR up.position_id = target_position_id);
-
-    -- Over Time Data (GroupBy Day)
+    -- 2. Activity Over Time
     SELECT json_agg(t) INTO over_time_data
     FROM (
         SELECT 
@@ -86,28 +80,17 @@ BEGIN
         FROM access_logs al
         JOIN users u ON al.user_id = u.id
         LEFT JOIN user_positions up ON u.id = up.user_id
+        LEFT JOIN dashboard_links dl ON al.dashboard_url = dl.url
+        LEFT JOIN dashboard_types dt ON dl.dashboard_type_id = dt.id
         WHERE (start_date IS NULL OR al.login_time >= start_date::TIMESTAMPTZ)
           AND (end_date IS NULL OR al.login_time <= end_date::TIMESTAMPTZ)
           AND (target_position_id IS NULL OR up.position_id = target_position_id)
+          AND (target_dashboard_name IS NULL OR dt.name = target_dashboard_name)
         GROUP BY 1
         ORDER BY 1 ASC
     ) t;
 
-    -- Over Time Data (GroupBy Month)
-    SELECT json_agg(t) INTO over_time_month_data
-    FROM (
-        SELECT 
-            TO_CHAR(al.login_time AT TIME ZONE 'America/Argentina/Buenos_Aires', 'YYYY-MM') as month,
-            COUNT(*) as count
-        FROM access_logs al
-        JOIN users u ON al.user_id = u.id
-        LEFT JOIN user_positions up ON u.id = up.user_id
-        WHERE (target_position_id IS NULL OR up.position_id = target_position_id)
-        GROUP BY 1
-        ORDER BY 1 ASC
-    ) t;
-
-    -- By Position Data
+    -- 3. Distribution by Position
     SELECT json_agg(t) INTO by_position_data
     FROM (
         SELECT 
@@ -117,14 +100,36 @@ BEGIN
         JOIN users u ON al.user_id = u.id
         JOIN user_positions up ON u.id = up.user_id
         JOIN positions p ON up.position_id = p.id
+        LEFT JOIN dashboard_links dl ON al.dashboard_url = dl.url
+        LEFT JOIN dashboard_types dt ON dl.dashboard_type_id = dt.id
         WHERE (start_date IS NULL OR al.login_time >= start_date::TIMESTAMPTZ)
           AND (end_date IS NULL OR al.login_time <= end_date::TIMESTAMPTZ)
           AND (target_position_id IS NULL OR up.position_id = target_position_id)
+          AND (target_dashboard_name IS NULL OR dt.name = target_dashboard_name)
         GROUP BY p.name
         ORDER BY count DESC
     ) t;
 
-    -- Top Users
+    -- 4. Most Used Dashboards (Types)
+    SELECT json_agg(t) INTO by_dashboard_data
+    FROM (
+        SELECT 
+            COALESCE(dt.name, 'Otros/Login') as name,
+            COUNT(al.id) as count
+        FROM access_logs al
+        LEFT JOIN dashboard_links dl ON al.dashboard_url = dl.url
+        LEFT JOIN dashboard_types dt ON dl.dashboard_type_id = dt.id
+        JOIN users u ON al.user_id = u.id
+        LEFT JOIN user_positions up ON u.id = up.user_id
+        WHERE (start_date IS NULL OR al.login_time >= start_date::TIMESTAMPTZ)
+          AND (end_date IS NULL OR al.login_time <= end_date::TIMESTAMPTZ)
+          AND (target_position_id IS NULL OR up.position_id = target_position_id)
+          AND (target_dashboard_name IS NULL OR dt.name = target_dashboard_name)
+        GROUP BY 1
+        ORDER BY count DESC
+    ) t;
+
+    -- 5. Top Active Users
     SELECT json_agg(t) INTO top_users_data
     FROM (
         SELECT 
@@ -132,22 +137,27 @@ BEGIN
             COUNT(al.id) as count
         FROM access_logs al
         JOIN users u ON al.user_id = u.id
+        LEFT JOIN user_positions up ON u.id = up.user_id
+        LEFT JOIN dashboard_links dl ON al.dashboard_url = dl.url
+        LEFT JOIN dashboard_types dt ON dl.dashboard_type_id = dt.id
         WHERE (start_date IS NULL OR al.login_time >= start_date::TIMESTAMPTZ)
           AND (end_date IS NULL OR al.login_time <= end_date::TIMESTAMPTZ)
+          AND (target_position_id IS NULL OR up.position_id = target_position_id)
+          AND (target_dashboard_name IS NULL OR dt.name = target_dashboard_name)
         GROUP BY u.name
         ORDER BY count DESC
-        LIMIT 5
+        LIMIT 8
     ) t;
 
     -- Final result
     result := json_build_object(
         'kpis', json_build_object(
-            'total_logins', total_logins,
-            'unique_users', unique_users
+            'total_logins', COALESCE(total_logins, 0),
+            'unique_users', COALESCE(unique_users, 0)
         ),
         'over_time', COALESCE(over_time_data, '[]'::json),
-        'over_time_month', COALESCE(over_time_month_data, '[]'::json),
         'by_position', COALESCE(by_position_data, '[]'::json),
+        'by_dashboard', COALESCE(by_dashboard_data, '[]'::json),
         'top_users', COALESCE(top_users_data, '[]'::json)
     );
 

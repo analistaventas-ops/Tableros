@@ -349,51 +349,169 @@ export default function AdminPanel({ token, user: currentUser }) {
       )}
 
       {activeTab === 'logs' && (
-        <div className="space-y-6">
-          {/* Métricas y Logs existentes con ajustes menores de Layout */}
-          <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-4 rounded-2xl shadow-sm border">
-            <div className="flex flex-wrap items-center gap-6">
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-bold text-slate-700">Rango:</span>
-                <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
-                  {['7d', '30d', 'month', 'all'].map(r => (
-                    <button key={r} onClick={() => setStatsRange(r)} className={`px-3 py-1 text-xs font-bold rounded-lg transition ${statsRange === r ? 'bg-white shadow text-blue-600' : 'text-slate-500 hover:text-slate-900'}`}>{r}</button>
-                  ))}
-                </div>
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          {/* BARRA DE FILTROS AVANZADA */}
+          <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap items-end gap-6">
+            <div className="flex-1 min-w-[200px]">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Rango Temporal</label>
+              <div className="flex gap-1 bg-slate-50 p-1 rounded-xl border">
+                {[
+                  { id: '7d', label: '7 días' },
+                  { id: '30d', label: '30 días' },
+                  { id: 'month', label: 'Mes actual' },
+                  { id: 'all', label: 'Histórico' }
+                ].map(r => (
+                  <button 
+                    key={r.id} 
+                    onClick={() => setStatsRange(r.id)} 
+                    className={`flex-1 px-3 py-2 text-[10px] font-bold rounded-lg transition-all ${statsRange === r.id ? 'bg-white shadow-sm text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
+                  >
+                    {r.label}
+                  </button>
+                ))}
               </div>
             </div>
+
+            <div className="flex-1 min-w-[200px]">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2 flex items-center gap-2"><Filter size={10} /> Filtrar por Puesto</label>
+              <select 
+                value={selectedPositionId} 
+                onChange={e => setSelectedPositionId(e.target.value)}
+                className="w-full bg-slate-50 border p-2.5 rounded-xl text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-100 transition-all"
+              >
+                <option value="">Todos los puestos</option>
+                {positions.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </div>
+
+            <div className="flex-1 min-w-[200px]">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2 flex items-center gap-2"><Layout size={10} /> Filtrar por Tablero</label>
+              <select 
+                value={selectedDashboard} 
+                onChange={e => setSelectedDashboard(e.target.value)}
+                className="w-full bg-slate-50 border p-2.5 rounded-xl text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-100 transition-all"
+              >
+                <option value="">Todos los conceptos</option>
+                {dashboardTypes.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+              </select>
+            </div>
+            
+            <button 
+              onClick={() => { setSelectedPositionId(''); setSelectedDashboard(''); setStatsRange('7d'); }}
+              className="px-4 py-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all group"
+              title="Limpiar Filtros"
+            >
+              <Trash2 size={18} className="group-hover:scale-110 transition-transform" />
+            </button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 text-center">
-              <div className="text-2xl font-black text-blue-600">{stats.kpis?.total_logins || 0}</div>
-              <div className="text-[10px] font-black text-slate-400 uppercase mt-1">Total Ingresos</div>
-            </div>
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 text-center">
-              <div className="text-2xl font-black text-emerald-600">{stats.kpis?.unique_users || 0}</div>
-              <div className="text-[10px] font-black text-slate-400 uppercase mt-1">Usuarios Activos</div>
-            </div>
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 text-center">
-              <div className="text-2xl font-black text-purple-600">{dashboardLinks.length}</div>
-              <div className="text-[10px] font-black text-slate-400 uppercase mt-1">Tableros Mapeados</div>
-            </div>
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 text-center">
-              <div className="text-2xl font-black text-orange-600">{positions.length}</div>
-              <div className="text-[10px] font-black text-slate-400 uppercase mt-1">Roles Totales</div>
-            </div>
+
+          {/* GRID DE KPIS CANÓNICOS */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[
+              { label: 'Total Accesos', value: stats.kpis?.total_logins, icon: Activity, color: 'text-blue-600', bg: 'bg-blue-50' },
+              { label: 'Usuarios Únicos', value: stats.kpis?.unique_users, icon: Users, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+              { label: 'Tableros Activos', value: dashboardLinks.length, icon: Layout, color: 'text-purple-600', bg: 'bg-purple-50' },
+              { label: 'Roles de Empresa', value: positions.length, icon: Briefcase, color: 'text-orange-600', bg: 'bg-orange-50' }
+            ].map((kpi, i) => (
+              <div key={i} className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex items-center gap-5 group hover:shadow-md transition-all">
+                <div className={`${kpi.bg} ${kpi.color} p-4 rounded-2xl group-hover:scale-110 transition-transform`}><kpi.icon size={24} /></div>
+                <div>
+                  <div className={`text-2xl font-black ${kpi.color}`}>{kpi.value || 0}</div>
+                  <div className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{kpi.label}</div>
+                </div>
+              </div>
+            ))}
           </div>
-          
-          <div className="bg-white rounded-2xl shadow-sm border p-6">
-             <div className="flex items-center gap-2 mb-6"><TrendingUp size={20} className="text-blue-500" /><h3 className="font-bold text-slate-800">Actividad de Usuarios</h3></div>
-             <div className="h-[300px]">
-               <ResponsiveContainer width="100%" height="100%">
-                 <LineChart data={stats.over_time || []}>
-                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                   <XAxis dataKey="date" tick={{fontSize: 10}} />
-                   <Tooltip />
-                   <Line type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={3} dot={{r: 4}} />
-                 </LineChart>
-               </ResponsiveContainer>
-             </div>
+
+          {/* DASHBOARD DE ANÁLISIS VISUAL */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            {/* GRÁFICO DE EVOLUCIÓN (Línea) */}
+            <div className="lg:col-span-2 bg-white rounded-3xl shadow-sm border p-8">
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-3">
+                  <div className="bg-blue-600 p-2 rounded-lg text-white shadow-lg shadow-blue-200"><TrendingUp size={18} /></div>
+                  <h3 className="font-extrabold text-slate-800">Evolución de Uso</h3>
+                </div>
+                <span className="text-[10px] font-bold text-slate-400 bg-slate-50 px-3 py-1 rounded-full border">Frecuencia Diaria</span>
+              </div>
+              <div className="h-[320px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={stats.over_time || []} margin={{ top: 5, right: 30, left: -20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="date" tick={{fontSize: 10, fontWeight: 700, fill: '#94a3b8'}} axisLine={false} tickLine={false} />
+                    <YAxis tick={{fontSize: 10, fontWeight: 700, fill: '#94a3b8'}} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'}} />
+                    <Line type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={4} dot={{r: 5, fill: '#3b82f6', strokeWidth: 2, stroke: '#fff'}} activeDot={{r: 8, strokeWidth: 0}} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* USO POR CONCEPTO (Barras) */}
+            <div className="bg-white rounded-3xl shadow-sm border p-8">
+              <div className="flex items-center gap-3 mb-8">
+                <div className="bg-purple-600 p-2 rounded-lg text-white shadow-lg shadow-purple-200"><BarChart2 size={18} /></div>
+                <h3 className="font-extrabold text-slate-800">Los Más Usados</h3>
+              </div>
+              <div className="h-[320px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={stats.by_dashboard || []} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                    <XAxis type="number" hide />
+                    <YAxis dataKey="name" type="category" tick={{fontSize: 10, fontWeight: 800}} width={90} axisLine={false} tickLine={false} />
+                    <Tooltip cursor={{fill: '#f8fafc'}} />
+                    <Bar dataKey="count" fill="#8b5cf6" radius={[0, 10, 10, 0]} barSize={20}>
+                      { (stats.by_dashboard || []).map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />) }
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* DISTRIBUCIÓN POR PUESTO (Pie) */}
+            <div className="bg-white rounded-3xl shadow-sm border p-8">
+              <div className="flex items-center gap-3 mb-8">
+                <div className="bg-emerald-600 p-2 rounded-lg text-white shadow-lg shadow-emerald-200"><PieIcon size={18} /></div>
+                <h3 className="font-extrabold text-slate-800">Acceso por Rol</h3>
+              </div>
+              <div className="h-[320px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={stats.by_position || []} dataKey="count" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={5}>
+                      { (stats.by_position || []).map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />) }
+                    </Pie>
+                    <Tooltip />
+                    <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{fontSize: '10px', fontWeight: 700}} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* TOP USUARIOS ACTIVOS (Tabla) */}
+            <div className="lg:col-span-2 bg-white rounded-3xl shadow-sm border overflow-hidden">
+               <div className="p-8 border-b flex items-center gap-3 bg-slate-50/50">
+                  <div className="bg-orange-600 p-2 rounded-lg text-white shadow-lg shadow-orange-200"><Users size={18} /></div>
+                  <h3 className="font-extrabold text-slate-800">Top 8 Colaboradores (Mayor actividad)</h3>
+               </div>
+               <div className="p-4">
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                   {(stats.top_users || []).map((u, i) => (
+                     <div key={i} className="flex items-center justify-between p-4 rounded-2xl hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-slate-500 font-black text-xs border border-white shadow-sm">{u.name?.substring(0,1)}</div>
+                          <div>
+                            <div className="text-sm font-black text-slate-700">{u.name}</div>
+                            <div className="text-[10px] font-bold text-slate-400">Total interacciones</div>
+                          </div>
+                        </div>
+                        <div className="bg-slate-100 px-4 py-2 rounded-xl text-sm font-black text-slate-600">{u.count}</div>
+                     </div>
+                   ))}
+                 </div>
+               </div>
+            </div>
+
           </div>
         </div>
       )}
