@@ -41,10 +41,12 @@ export default function AdminPanel({ token, user: currentUser }) {
   });
   
   const [activeTab, setActiveTab] = useState(currentUser.role === 'admin' ? 'users' : 'logs');
-  const [statsRange, setStatsRange] = useState('7d');
+  const [statsRange, setStatsRange] = useState('30d');
   const [selectedPositionId, setSelectedPositionId] = useState('');
   const [selectedDashboard, setSelectedDashboard] = useState('');
   const [selectedUserId, setSelectedUserId] = useState('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
   
   // MODAL STATES
   const [showUserModal, setShowUserModal] = useState(false);
@@ -65,17 +67,20 @@ export default function AdminPanel({ token, user: currentUser }) {
 
   const fetchData = async () => {
     try {
-      let fromDate = null;
-      if (statsRange === '7d') {
+      let finalFrom = fromDate;
+      let finalTo = toDate;
+
+      if (statsRange === '7d' && !fromDate) {
         const d = new Date(); d.setDate(d.getDate() - 7);
-        fromDate = d.toISOString().split('T')[0];
-      } else if (statsRange === '30d') {
+        finalFrom = d.toISOString().split('T')[0];
+      } else if (statsRange === '30d' && !fromDate) {
         const d = new Date(); d.setDate(d.getDate() - 30);
-        fromDate = d.toISOString().split('T')[0];
+        finalFrom = d.toISOString().split('T')[0];
       }
 
       const queryParams = new URLSearchParams();
-      if (fromDate) queryParams.append('from', fromDate);
+      if (finalFrom) queryParams.append('from', finalFrom);
+      if (finalTo) queryParams.append('to', finalTo);
       if (selectedPositionId) queryParams.append('positionId', selectedPositionId);
       if (selectedDashboard) queryParams.append('dashboardName', selectedDashboard);
       if (selectedUserId) queryParams.append('userId', selectedUserId);
@@ -115,7 +120,7 @@ export default function AdminPanel({ token, user: currentUser }) {
     } catch (err) { console.error("Fetch error:", err); }
   };
 
-  useEffect(() => { fetchData() }, [token, statsRange, selectedPositionId, selectedDashboard, selectedUserId]);
+  useEffect(() => { fetchData() }, [token, statsRange, selectedPositionId, selectedDashboard, selectedUserId, fromDate, toDate]);
 
   // CRUD HANDLERS (Same as before but consistent)
   const handleUserModal = (u = null) => {
@@ -186,21 +191,7 @@ export default function AdminPanel({ token, user: currentUser }) {
   return (
     <div className="p-8 bg-slate-50 min-h-screen pb-24">
       {/* HEADER SECTION */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-6">
-        <div className="flex items-center gap-4">
-          <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-200">
-            <Layout size={32} className={activeTab === 'logs' ? 'text-slate-800' : 'text-blue-600'} />
-          </div>
-          <div>
-            <h2 className="text-3xl font-black text-slate-800 tracking-tight uppercase">
-              {currentUser.role === 'admin' ? 'Panel de Control' : 'Seguimiento de Uso'}
-            </h2>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">{currentUser.role} logueado</p>
-            </div>
-          </div>
-        </div>
+      <div className="flex flex-col md:flex-row justify-end items-start md:items-end mb-8 gap-6">
 
         <div className="flex bg-white rounded-2xl shadow-sm border border-slate-200 p-1.5 gap-1.5 transition-all">
           {currentUser.role === 'admin' && (
@@ -354,33 +345,45 @@ export default function AdminPanel({ token, user: currentUser }) {
       {activeTab === 'logs' && (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
           
-          {/* HEADER SECTORIAL */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-               <div className="p-4 bg-slate-900 rounded-3xl text-white shadow-xl rotate-3"><Zap size={24} /></div>
-               <div>
-                  <h3 className="text-xl font-black text-slate-800 tracking-tight">Product Analytics Dashboard</h3>
-                  <p className="text-xs font-bold text-slate-400">Análisis detallado de adopción, retención y comportamiento de usuarios.</p>
-               </div>
-            </div>
-            
+          <div className="flex flex-col md:flex-row md:items-center justify-end gap-4">
             {/* FILTROS AVANZADOS COMPACTOS */}
             <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap items-center gap-3">
               <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
-                {[{ id: '7d', l: '7d' }, { id: '30d', l: '30d' }, { id: 'all', l: 'Todo' }].map(r => (
+                {[{ id: '7d', l: '7d' }, { id: '30d', l: '30d' }, { id: 'custom', l: 'Filtro' }].map(r => (
                   <button key={r.id} onClick={() => setStatsRange(r.id)} className={`px-4 py-1.5 text-[9px] font-black uppercase rounded-lg transition-all ${statsRange === r.id ? 'bg-white shadow-sm text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}>{r.l}</button>
                 ))}
               </div>
+              
+              {statsRange === 'custom' && (
+                <>
+                  <div className="h-4 w-px bg-slate-200"></div>
+                  <div className="flex items-center gap-2">
+                    <Calendar size={12} className="text-slate-400" />
+                    <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="bg-slate-50 border-none px-2 py-1.5 rounded-xl text-[10px] font-black text-slate-700 outline-none" />
+                    <span className="text-[10px] font-black text-slate-300">A</span>
+                    <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="bg-slate-50 border-none px-2 py-1.5 rounded-xl text-[10px] font-black text-slate-700 outline-none" />
+                  </div>
+                </>
+              )}
+
               <div className="h-4 w-px bg-slate-200"></div>
+              
+              <select value={selectedUserId} onChange={e => setSelectedUserId(e.target.value)} className="bg-slate-50 border-none px-3 py-1.5 rounded-xl text-[10px] font-black text-slate-700 outline-none cursor-pointer">
+                <option value="">Colaborador: Todos</option>
+                {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+              </select>
+
               <select value={selectedDashboard} onChange={e => setSelectedDashboard(e.target.value)} className="bg-slate-50 border-none px-3 py-1.5 rounded-xl text-[10px] font-black text-slate-700 outline-none cursor-pointer">
                 <option value="">Tablero: Todos</option>
                 {dashboardTypes.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
               </select>
+
               <select value={selectedPositionId} onChange={e => setSelectedPositionId(e.target.value)} className="bg-slate-50 border-none px-3 py-1.5 rounded-xl text-[10px] font-black text-slate-700 outline-none cursor-pointer">
                 <option value="">Área/Puesto: Todos</option>
                 {positions.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
-              <button onClick={() => { setSelectedPositionId(''); setSelectedDashboard(''); setSelectedUserId(''); setStatsRange('30d'); }} className="p-2 text-slate-400 hover:text-red-500 bg-slate-50 rounded-xl transition-all" title="Reiniciar Filtros">
+
+              <button onClick={() => { setSelectedPositionId(''); setSelectedDashboard(''); setSelectedUserId(''); setStatsRange('30d'); setFromDate(''); setToDate(''); }} className="p-2 text-slate-400 hover:text-red-500 bg-slate-50 rounded-xl transition-all" title="Reiniciar Filtros">
                 <Trash size={14} />
               </button>
             </div>
