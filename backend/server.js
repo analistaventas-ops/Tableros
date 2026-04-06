@@ -144,6 +144,7 @@ app.get('/api/logs', authenticateToken, async (req, res) => {
       session_date,
       users (
         name,
+        role,
         user_positions (
           positions (name)
         )
@@ -167,19 +168,25 @@ app.get('/api/logs', authenticateToken, async (req, res) => {
     });
   }
 
-  const formatted = data.map(session => {
-    const userPositions = session.users.user_positions ? session.users.user_positions.map(up => up.positions?.name).filter(Boolean) : [];
-    return {
-      id: session.id,
-      name: session.users.name,
-      start_time: session.start_time,
-      last_ping: session.last_ping,
-      duration_minutes: session.duration_minutes,
-      dashboard_url: session.dashboard_url,
-      dashboard_name: urlToName[session.dashboard_url] || 'General',
-      position_name: userPositions.join(', ')
-    };
-  });
+  const formatted = data
+    .filter(session => {
+      // If viewer is NOT admin, hide admin logs
+      if (req.user.role !== 'admin' && session.users?.role === 'admin') return false;
+      return true;
+    })
+    .map(session => {
+      const userPositions = session.users.user_positions ? session.users.user_positions.map(up => up.positions?.name).filter(Boolean) : [];
+      return {
+        id: session.id,
+        name: session.users.name,
+        start_time: session.start_time,
+        last_ping: session.last_ping,
+        duration_minutes: session.duration_minutes,
+        dashboard_url: session.dashboard_url,
+        dashboard_name: urlToName[session.dashboard_url] || 'General',
+        position_name: userPositions.join(', ')
+      };
+    });
   
   res.json(formatted);
 });
@@ -197,7 +204,8 @@ app.get('/api/stats', authenticateToken, async (req, res) => {
     end_date: to || null,
     target_position_id: positionId ? parseInt(positionId) : null,
     target_dashboard_name: dashboardName || null,
-    target_user_id: userId || null
+    target_user_id: userId ? userId : null,
+    exclude_admins: req.user.role !== 'admin'
   });
   
   if (error) {

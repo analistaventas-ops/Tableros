@@ -41,7 +41,7 @@ export default function AdminPanel({ token, user: currentUser }) {
   });
   
   const [activeTab, setActiveTab] = useState(currentUser.role === 'admin' ? 'users' : 'logs');
-  const [statsRange, setStatsRange] = useState('30d');
+  const [statsRange, setStatsRange] = useState('this_month');
   const [selectedPositionId, setSelectedPositionId] = useState('');
   const [selectedDashboard, setSelectedDashboard] = useState('');
   const [selectedUserId, setSelectedUserId] = useState('');
@@ -70,7 +70,11 @@ export default function AdminPanel({ token, user: currentUser }) {
       let finalFrom = fromDate;
       let finalTo = toDate;
 
-      if (statsRange === '7d' && !fromDate) {
+      if (statsRange === 'this_month' && !fromDate) {
+        const now = new Date();
+        finalFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+        finalTo = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+      } else if (statsRange === '7d' && !fromDate) {
         const d = new Date(); d.setDate(d.getDate() - 7);
         finalFrom = d.toISOString().split('T')[0];
       } else if (statsRange === '30d' && !fromDate) {
@@ -346,10 +350,9 @@ export default function AdminPanel({ token, user: currentUser }) {
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
           
           <div className="flex flex-col md:flex-row md:items-center justify-end gap-4">
-            {/* FILTROS AVANZADOS COMPACTOS */}
             <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap items-center gap-3">
               <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
-                {[{ id: '7d', l: '7d' }, { id: '30d', l: '30d' }, { id: 'custom', l: 'Filtro' }].map(r => (
+                {[{ id: 'this_month', l: 'Mes Actual' }, { id: '30d', l: '30d' }, { id: 'custom', l: 'Filtro' }].map(r => (
                   <button key={r.id} onClick={() => setStatsRange(r.id)} className={`px-4 py-1.5 text-[9px] font-black uppercase rounded-lg transition-all ${statsRange === r.id ? 'bg-white shadow-sm text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}>{r.l}</button>
                 ))}
               </div>
@@ -383,7 +386,7 @@ export default function AdminPanel({ token, user: currentUser }) {
                 {positions.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
 
-              <button onClick={() => { setSelectedPositionId(''); setSelectedDashboard(''); setSelectedUserId(''); setStatsRange('30d'); setFromDate(''); setToDate(''); }} className="p-2 text-slate-400 hover:text-red-500 bg-slate-50 rounded-xl transition-all" title="Reiniciar Filtros">
+              <button onClick={() => { setSelectedPositionId(''); setSelectedDashboard(''); setSelectedUserId(''); setStatsRange('this_month'); setFromDate(''); setToDate(''); }} className="p-2 text-slate-400 hover:text-red-500 bg-slate-50 rounded-xl transition-all" title="Reiniciar Filtros">
                 <Trash size={14} />
               </button>
             </div>
@@ -501,7 +504,7 @@ export default function AdminPanel({ token, user: currentUser }) {
             </div>
 
             <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
-                <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-6 flex items-center gap-2"><UserCheck size={18} className="text-blue-500" /> Auditoría en Tiempo Real (UTC-3)</h3>
+                <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-6 flex items-center gap-2"><UserCheck size={18} className="text-blue-500" /> Auditoría en Tiempo Real</h3>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
                        <thead className="bg-slate-50 text-[8px] uppercase font-black text-slate-400 border-b">

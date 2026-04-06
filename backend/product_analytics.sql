@@ -21,7 +21,8 @@ CREATE OR REPLACE FUNCTION get_enhanced_stats(
     end_date TEXT DEFAULT NULL,
     target_position_id BIGINT DEFAULT NULL,
     target_dashboard_name TEXT DEFAULT NULL,
-    target_user_id BIGINT DEFAULT NULL
+    target_user_id BIGINT DEFAULT NULL,
+    exclude_admins BOOLEAN DEFAULT FALSE
 )
 RETURNS JSON AS $$
 DECLARE
@@ -74,6 +75,7 @@ BEGIN
     JOIN dashboard_links dl ON s.dashboard_url = dl.url
     WHERE s.session_date BETWEEN curr_start AND curr_end
       AND (target_user_id IS NULL OR s.user_id = target_user_id)
+      AND (NOT exclude_admins OR s.user_id NOT IN (SELECT id FROM users WHERE role = 'admin'))
       AND (target_position_id IS NULL OR EXISTS (SELECT 1 FROM user_positions up WHERE up.user_id = s.user_id AND up.position_id = target_position_id))
       AND (target_dashboard_name IS NULL OR EXISTS (
           SELECT 1 FROM dashboard_types dt WHERE dl.dashboard_type_id = dt.id AND dt.name = target_dashboard_name
@@ -89,6 +91,7 @@ BEGIN
     JOIN dashboard_links dl ON s.dashboard_url = dl.url
     WHERE s.session_date BETWEEN prev_start AND prev_end
       AND (target_user_id IS NULL OR s.user_id = target_user_id)
+      AND (NOT exclude_admins OR s.user_id NOT IN (SELECT id FROM users WHERE role = 'admin'))
       AND (target_position_id IS NULL OR EXISTS (SELECT 1 FROM user_positions up WHERE up.user_id = s.user_id AND up.position_id = target_position_id))
       AND (target_dashboard_name IS NULL OR EXISTS (
           SELECT 1 FROM dashboard_types dt WHERE dl.dashboard_type_id = dt.id AND dt.name = target_dashboard_name
@@ -99,7 +102,8 @@ BEGIN
     
     SELECT COUNT(DISTINCT user_id) INTO curr_active_30d 
     FROM activity_sessions 
-    WHERE session_date >= (today_ar - INTERVAL '30 days');
+    WHERE session_date >= (today_ar - INTERVAL '30 days')
+    AND (NOT exclude_admins OR user_id NOT IN (SELECT id FROM users WHERE role = 'admin'));
 
     -- 4. Top Dashboard info (Excluding non-dashboard activities)
     SELECT dt.name, COUNT(*) as sessions
@@ -108,6 +112,7 @@ BEGIN
     INNER JOIN dashboard_links dl ON s.dashboard_url = dl.url
     INNER JOIN dashboard_types dt ON dl.dashboard_type_id = dt.id
     WHERE s.session_date BETWEEN curr_start AND curr_end
+    AND (NOT exclude_admins OR s.user_id NOT IN (SELECT id FROM users WHERE role = 'admin'))
     GROUP BY 1
     ORDER BY sessions DESC
     LIMIT 1;
@@ -127,6 +132,7 @@ BEGIN
             FROM activity_sessions s
             JOIN dashboard_links dl ON s.dashboard_url = dl.url
             WHERE session_date BETWEEN curr_start AND curr_end
+            AND (NOT exclude_admins OR s.user_id NOT IN (SELECT id FROM users WHERE role = 'admin'))
             GROUP BY 1
         ) s ON ds.d = s.date
         ORDER BY ds.d ASC
@@ -142,6 +148,7 @@ BEGIN
         JOIN dashboard_links dl ON s.dashboard_url = dl.url
         JOIN dashboard_types dt ON dl.dashboard_type_id = dt.id
         WHERE s.session_date BETWEEN curr_start AND curr_end
+        AND (NOT exclude_admins OR s.user_id NOT IN (SELECT id FROM users WHERE role = 'admin'))
         GROUP BY 1
         ORDER BY count DESC
     ) t;
@@ -157,6 +164,7 @@ BEGIN
         JOIN activity_sessions s ON up.user_id = s.user_id
         JOIN dashboard_links dl ON s.dashboard_url = dl.url
         WHERE s.session_date BETWEEN curr_start AND curr_end
+        AND (NOT exclude_admins OR s.user_id NOT IN (SELECT id FROM users WHERE role = 'admin'))
         GROUP BY p.name
         ORDER BY count DESC
     ) t;
@@ -179,6 +187,7 @@ BEGIN
             FROM activity_sessions s
             JOIN dashboard_links dl ON s.dashboard_url = dl.url
             WHERE s.session_date BETWEEN curr_start AND curr_end
+            AND (NOT exclude_admins OR s.user_id NOT IN (SELECT id FROM users WHERE role = 'admin'))
             GROUP BY s.user_id
         ) s
         GROUP BY 1
@@ -195,6 +204,7 @@ BEGIN
         JOIN activity_sessions s ON u.id = s.user_id
         JOIN dashboard_links dl ON s.dashboard_url = dl.url
         WHERE s.session_date BETWEEN curr_start AND curr_end
+        AND (NOT exclude_admins OR s.user_id NOT IN (SELECT id FROM users WHERE role = 'admin'))
         GROUP BY 1
         ORDER BY sessions DESC
         LIMIT 10
