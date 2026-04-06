@@ -119,6 +119,20 @@ export default function AdminPanel({ token, user: currentUser }) {
     }
   };
 
+  const filteredUsers = users.filter(u => {
+    if (!selectedPositionId) return true;
+    return u.position_ids?.includes(parseInt(selectedPositionId));
+  });
+
+  const filteredDashboards = dashboardTypes.filter(t => {
+    if (!selectedPositionId) return true;
+    // If a position is selected, only show dashboards assigned to that position
+    return dashboardLinks.some(lk => 
+      parseInt(lk.position_id) === parseInt(selectedPositionId) && 
+      parseInt(lk.dashboard_type_id) === t.id
+    );
+  });
+
   useEffect(() => { fetchData() }, [token, statsRange, selectedPositionId, selectedDashboard, selectedUserId, fromDate, toDate]);
 
   // CRUD HANDLERS (Same as before but consistent)
@@ -392,7 +406,7 @@ export default function AdminPanel({ token, user: currentUser }) {
                 <Users size={12} className="text-slate-400" />
                 <select value={selectedUserId} onChange={e => setSelectedUserId(e.target.value)} className="bg-slate-50 border-none px-3 py-1.5 rounded-xl text-[10px] font-black text-slate-700 outline-none cursor-pointer">
                   <option value="">Colaborador: Todos</option>
-                  {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                  {filteredUsers.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
                 </select>
               </div>
 
@@ -402,7 +416,7 @@ export default function AdminPanel({ token, user: currentUser }) {
                 <Layout size={12} className="text-slate-400" />
                 <select value={selectedDashboard} onChange={e => setSelectedDashboard(e.target.value)} className="bg-slate-50 border-none px-3 py-1.5 rounded-xl text-[10px] font-black text-slate-700 outline-none cursor-pointer">
                   <option value="">Análisis por Tablero</option>
-                  {dashboardTypes.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+                  {filteredDashboards.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
                 </select>
               </div>
 
@@ -536,7 +550,7 @@ export default function AdminPanel({ token, user: currentUser }) {
                            </tr>
                         </thead>
                         <tbody className="divide-y text-[10px]">
-                          {(logs || []).slice(0, 15).map(s => {
+                          {(logs || []).filter(s => s.dashboard_url !== 'LOGIN_PORTAL').slice(0, 15).map(s => {
                              let timeDisplay = '---';
                              try {
                                if (s.start_time) {
