@@ -47,20 +47,29 @@ export default function AdminPanel({ token, user: currentUser }) {
     try {
       let fromDate = null;
       const now = new Date();
-      if (statsRange === '7d') fromDate = format(subDays(now, 7), 'yyyy-MM-dd');
-      else if (statsRange === '30d') fromDate = format(subDays(now, 30), 'yyyy-MM-dd');
-      else if (statsRange === 'month') fromDate = format(startOfMonth(now), 'yyyy-MM-dd');
+      if (statsRange === '7d') {
+        const d = new Date();
+        d.setDate(d.getDate() - 7);
+        fromDate = d.toISOString().split('T')[0];
+      } else if (statsRange === '30d') {
+        const d = new Date();
+        d.setDate(d.getDate() - 30);
+        fromDate = d.toISOString().split('T')[0];
+      } else if (statsRange === 'custom') {
+        fromDate = customRange.from;
+      }
 
       const queryParams = new URLSearchParams();
       if (fromDate) queryParams.append('from', fromDate);
+      if (statsRange === 'custom' && customRange.to) queryParams.append('to', customRange.to);
       if (selectedPositionId) queryParams.append('positionId', selectedPositionId);
       if (selectedDashboard) queryParams.append('dashboardName', selectedDashboard);
       if (selectedUserId) queryParams.append('userId', selectedUserId);
       
       const query = queryParams.toString() ? `?${queryParams.toString()}` : '';
-      const isDirectorio = currentUser.position_name?.includes('Directorio');
+      const isDirectorio = user.position_name?.toLowerCase().includes('directorio');
       
-      if (currentUser.role === 'admin') {
+      if (user.role === 'admin') {
         const [uRes, pRes, tRes, lkRes, lRes, sRes] = await Promise.all([
           api.get('/users'),
           api.get('/positions'),
