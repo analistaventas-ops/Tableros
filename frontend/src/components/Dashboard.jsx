@@ -67,8 +67,8 @@ export default function Dashboard({ user, onLogout }) {
       <header className="flex items-center justify-between px-6 py-3 bg-white shadow-sm shrink-0 border-b">
         <div className="flex items-center gap-6">
           <img src="/assets/logo.png" alt="Logo" className="h-8 w-auto" onError={(e) => { e.target.style.display = 'none'; }} />
-          <h1 className="text-lg font-bold text-slate-800">
-            {user.name} {activeDashboard && <span className="font-light text-slate-400">| {activeDashboard.dashboard_name}</span>}
+          <h1 className="text-lg font-black text-slate-800 uppercase tracking-tighter">
+            {user.name} {activeDashboard && <span className="font-light text-slate-400 normal-case tracking-normal"> | {activeDashboard.dashboard_name}</span>}
           </h1>
           {canSeeMonitoring && (
             <div className="flex bg-gray-100 rounded-lg p-1">
@@ -82,7 +82,7 @@ export default function Dashboard({ user, onLogout }) {
                 onClick={() => setShowMonitoring(true)} 
                 className={`px-3 py-1 text-xs font-bold rounded-md transition ${showMonitoring ? 'bg-white shadow text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
                >
-                 {user.role === 'admin' ? 'Administrar Portal' : 'Seguimiento y Métricas'}
+                 {user.role === 'admin' ? 'Administrar Portal' : 'Métricas y Análisis'}
                </button>
             </div>
           )}
