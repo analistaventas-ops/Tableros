@@ -33,14 +33,30 @@ export default function Dashboard({ user, onLogout }) {
     }
   }, [user]);
 
-  // NEW: Heartbeat for measuring time spent
+  // NEW: Intelligent Heartbeat (Visibility & Idle Detection)
   useEffect(() => {
+    let lastActive = Date.now();
+    const handleActivity = () => { lastActive = Date.now(); };
+    
+    // Listen for any user interaction
+    window.addEventListener('mousemove', handleActivity);
+    window.addEventListener('keydown', handleActivity);
+
     const interval = setInterval(() => {
-      if (!showMonitoring && activeDashboard) {
+      const isVisible = document.visibilityState === 'visible';
+      const isIdle = (Date.now() - lastActive) > 300000; // 5 minutes inactivity limit
+      
+      // ONLY send heartbeat if active, visible, and NOT on the monitoring panel
+      if (isVisible && !isIdle && !showMonitoring && activeDashboard) {
         api.post('/logs/heartbeat', { dashboard_url: activeDashboard.dashboard_url }).catch(() => {});
       }
-    }, 30000); // 30 seconds
-    return () => clearInterval(interval);
+    }, 30000); // Check every 30 seconds
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('mousemove', handleActivity);
+      window.removeEventListener('keydown', handleActivity);
+    };
   }, [showMonitoring, activeDashboard]);
 
   const canSeeMonitoring = user.role === 'admin' || user.position_name?.toLowerCase().includes('directorio');
