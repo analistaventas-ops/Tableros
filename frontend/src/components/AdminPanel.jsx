@@ -9,7 +9,7 @@ import {
   Edit, Trash2, Plus, Layout,
   Zap, Clock, UserCheck, Star,
   Trash, Filter, TrendingUp, TrendingDown,
-  Target, Percent, Eye
+  Target, Percent, Eye, Mail
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -157,6 +157,16 @@ export default function AdminPanel({ token, user: currentUser }) {
     try { await api.delete(`/users/${id}`); fetchData(); } catch (err) { alert(err.response?.data?.error || "Error"); }
   };
 
+  const handleSendMail = async (id) => {
+    if (!window.confirm("¿Enviar credenciales por mail al usuario?")) return;
+    try {
+      const res = await api.post(`/users/send-credentials/${id}`);
+      alert(res.data.message || "Enviado con éxito");
+    } catch (err) {
+      alert(err.response?.data?.error || "Error al enviar");
+    }
+  };
+
   const handlePosModal = (p = null) => {
     setEditingPos(p);
     setPosFormData(p ? { name: p.name } : { name: '' });
@@ -262,6 +272,7 @@ export default function AdminPanel({ token, user: currentUser }) {
                           </td>
                           <td className="p-5 text-right pr-8">
                             <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                               <button onClick={() => handleSendMail(u.id)} className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-xl" title="Enviar Credenciales"><Mail size={16} /></button>
                                <button onClick={() => handleUserModal(u)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-xl"><Edit size={16} /></button>
                                {currentUser.id !== u.id && <button onClick={() => handleUserDel(u.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-xl"><Trash2 size={16} /></button>}
                             </div>

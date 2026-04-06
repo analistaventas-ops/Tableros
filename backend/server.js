@@ -511,17 +511,21 @@ app.post('/api/users/send-credentials/:id', authenticateToken, async (req, res) 
       to: user.email,
       subject: 'Tus credenciales - Portal Neumaticos Pons',
       html: `
-        <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-          <h2 style="color: #d32f2f;">Acceso al Portal de Tableros</h2>
+        <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px; max-width: 600px;">
+          <h2 style="color: #1e293b; border-bottom: 2px solid #3b82f6; padding-bottom: 10px;">Acceso al Portal de Tableros</h2>
           <p>Hola <strong>${user.name}</strong>,</p>
-          <p>Se te ha asignado acceso al portal interno. Aquí están tus datos:</p>
-          <div style="background: #f4f4f4; padding: 15px; border-radius: 5px; margin: 20px 0;">
-            <p><strong>Usuario:</strong> ${user.username}</p>
-            <p><strong>Contraseña:</strong> ${user.password_plain}</p>
+          <p>Se te ha asignado acceso al portal interno de Neumáticos Pons. Aquí están tus datos de acceso:</p>
+          <div style="background: #f8fafc; padding: 20px; border-radius: 15px; margin: 20px 0; border: 1px solid #e2e8f0;">
+            <p style="margin: 5px 0;"><strong>💻 Usuario:</strong> ${user.username}</p>
+            <p style="margin: 5px 0;"><strong>🔑 Contraseña:</strong> ${user.password_plain}</p>
           </div>
-          <p>Puedes acceder al portal desde tu navegador habitual.</p>
-          <hr />
-          <p style="font-size: 12px; color: #777;">Este es un mensaje automático del sistema de Neumáticos Pons.</p>
+          <p>Puedes acceder a la plataforma haciendo clic en el siguiente botón:</p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="https://tableros-pons.vercel.app" style="background: #2563eb; color: white; padding: 15px 30px; text-decoration: none; border-radius: 10px; font-weight: bold; display: inline-block;">Acceder al Portal</a>
+          </div>
+          <p style="font-size: 13px; color: #64748b;">Si el botón no funciona, copia y pega el siguiente enlace en tu navegador:<br/>https://tableros-pons.vercel.app</p>
+          <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 30px 0;" />
+          <p style="font-size: 12px; color: #94a3b8; text-align: center;">Este es un mensaje automático del sistema de Neumáticos Pons.</p>
         </div>
       `
     });
