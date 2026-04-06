@@ -98,17 +98,19 @@ export default function AdminPanel({ token, user: currentUser }) {
         if (sRes.data) setStats(sRes.data);
       } else {
         // Directorio also needs dashboard types for filtering
-        const [pRes, lRes, sRes, uRes, tRes] = await Promise.all([
+        const [pRes, lRes, sRes, uRes, tRes, lkRes] = await Promise.all([
           isDirectorio ? api.get('/positions').catch(e => ({ data: [] })) : Promise.resolve({ data: [] }),
           api.get('/logs' + query).catch(e => ({ data: [] })),
           api.get('/stats' + query).catch(e => ({ data: null })),
           isDirectorio ? api.get('/users').catch(e => ({ data: [] })) : Promise.resolve({ data: [] }),
-          api.get('/dashboard-types').catch(e => ({ data: [] }))
+          api.get('/dashboard-types').catch(e => ({ data: [] })),
+          isDirectorio ? api.get('/dashboard-links').catch(e => ({ data: [] })) : Promise.resolve({ data: [] })
         ]);
         
         if (isDirectorio) {
           setPositions(Array.isArray(pRes.data) ? pRes.data : []);
           setUsers(Array.isArray(uRes.data) ? uRes.data : []);
+          setDashboardLinks(Array.isArray(lkRes.data) ? lkRes.data : []);
         }
         setDashboardTypes(Array.isArray(tRes.data) ? tRes.data : []);
         setLogs(Array.isArray(lRes.data) ? lRes.data : []);
@@ -165,7 +167,8 @@ export default function AdminPanel({ token, user: currentUser }) {
     } catch (err) {
       const errorMsg = err.response?.data?.error || "Error al enviar";
       const details = err.response?.data?.details || "";
-      alert(`${errorMsg} ${details ? ': ' + details : ''} \n\nRecuerda configurar SMTP_USER y SMTP_PASS en Vercel.`);
+      const technical = err.response?.data?.technical || "";
+      alert(`${errorMsg}\nDetalle: ${details}\nCódigo: ${technical}\n\nREQUERIDO: Configurar SMTP_USER y SMTP_PASS en Vercel y usar una 'Contraseña de Aplicación' si es Gmail.`);
     }
   };
 

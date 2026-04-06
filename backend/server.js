@@ -9,10 +9,22 @@ const nodemailer = require('nodemailer');
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'smtp.gmail.com',
   port: parseInt(process.env.SMTP_PORT) || 465,
-  secure: process.env.SMTP_PORT == 465,
+  secure: (process.env.SMTP_PORT == 465), // true for 465, false for others
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS
+  },
+  tls: {
+    rejectUnauthorized: false // Often needed for some SMTP servers
+  }
+});
+
+// Verify connection on startup (optional but helpful for logs)
+transporter.verify((error, success) => {
+  if (error) {
+    console.warn("[SMTP] Ready error:", error.message);
+  } else {
+    console.log("[SMTP] Servidor listo para enviar correos");
   }
 });
 
@@ -185,11 +197,14 @@ app.get('/api/logs', authenticateToken, async (req, res) => {
       // Filter out sessions without associated users (db lookup safety)
       if (!session.users) return false;
 
+      // Filter out LOGIN_PORTAL as requested (not a dashboard access)
+      if (session.dashboard_url === 'LOGIN_PORTAL') return false;
+
       // If viewer is NOT admin, hide admin logs
       if (req.user.role !== 'admin' && session.users.role === 'admin') return false;
       
       // Filter by dashboard name if requested
-      if (dashboard_name && dashboard_name !== 'General' && dashboard_name !== '') {
+      if (dashboard_name && dashboard_name !== '') {
         const name = urlToName[session.dashboard_url] || 'General';
         if (name !== dashboard_name) return false;
       }
@@ -506,10 +521,18 @@ app.post('/api/users/send-credentials/:id', authenticateToken, async (req, res) 
   }
 
   try {
+    const fromEmail = process.env.SMTP_FROM || process.env.SMTP_USER;
+    if (!fromEmail || !process.env.SMTP_PASS) {
+      return res.status(500).json({ 
+        error: 'SMTP no configurado', 
+        details: 'Faltan variables de entorno SMTP_USER o SMTP_PASS en Vercel.' 
+      });
+    }
+
     await transporter.sendMail({
-      from: process.env.SMTP_FROM || process.env.SMTP_USER,
+      from: fromEmail,
       to: user.email,
-      subject: 'Tus credenciales - Portal Neumaticos Pons',
+      subject: 'Tus credenciales - Portal Neumáticos Pons',
       html: `
         <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px; max-width: 600px;">
           <h2 style="color: #1e293b; border-bottom: 2px solid #3b82f6; padding-bottom: 10px;">Acceso al Portal de Tableros</h2>
@@ -521,9 +544,9 @@ app.post('/api/users/send-credentials/:id', authenticateToken, async (req, res) 
           </div>
           <p>Puedes acceder a la plataforma haciendo clic en el siguiente botón:</p>
           <div style="text-align: center; margin: 30px 0;">
-            <a href="https://tableros-pons.vercel.app" style="background: #2563eb; color: white; padding: 15px 30px; text-decoration: none; border-radius: 10px; font-weight: bold; display: inline-block;">Acceder al Portal</a>
+            <a href="https://tableros-delta.vercel.app" style="background: #2563eb; color: white; padding: 15px 30px; text-decoration: none; border-radius: 10px; font-weight: bold; display: inline-block;">Acceder al Portal</a>
           </div>
-          <p style="font-size: 13px; color: #64748b;">Si el botón no funciona, copia y pega el siguiente enlace en tu navegador:<br/>https://tableros-pons.vercel.app</p>
+          <p style="font-size: 13px; color: #64748b;">Si el botón no funciona, copia y pega el siguiente enlace en tu navegador:<br/>https://tableros-delta.vercel.app</p>
           <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 30px 0;" />
           <p style="font-size: 12px; color: #94a3b8; text-align: center;">Este es un mensaje automático del sistema de Neumáticos Pons.</p>
         </div>
@@ -531,8 +554,12 @@ app.post('/api/users/send-credentials/:id', authenticateToken, async (req, res) 
     });
     res.json({ success: true, message: `Credenciales enviadas a ${user.email}` });
   } catch (mailErr) {
-    console.error("Email error:", mailErr);
-    res.status(500).json({ error: 'Error al enviar el correo real', details: mailErr.message });
+    console.error("Email error details:", mailErr);
+    res.status(500).json({ 
+      error: 'Error de servidor SMTP', 
+      details: mailErr.message,
+      technical: mailErr.code || 'UNKNOWN'
+    });
   }
 });
 
