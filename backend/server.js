@@ -32,8 +32,13 @@ transporter.verify((error, success) => {
 
 const app = express();
 
-// Proteccion XSS e Inyecciones de cabecera HTTP
-app.use(helmet()); 
+// Seguridad básica sin bloquear iframes de Power BI o políticas de origen cruzado
+app.use(helmet({
+  crossOriginResourcePolicy: false,
+  crossOriginOpenerPolicy: false,
+  crossOriginEmbedderPolicy: false,
+  contentSecurityPolicy: false
+})); 
 app.use(express.json());
 
 // Restringir CORS (sólo permitimos orígenes aprobados)
