@@ -188,8 +188,7 @@ app.get('/api/dashboard', authenticateToken, async (req, res) => {
 });
 
 app.get('/api/logs', authenticateToken, async (req, res) => {
-  const pName = req.user.position_name || '';
-  if (req.user.role !== 'admin' && !pName.includes('Directorio')) {
+  if (req.user.role !== 'admin' && !req.user.can_view_metrics) {
     return res.status(403).json({ error: 'Forbidden' });
   }
   const { start_date, end_date, user_id, position_id, dashboard_name } = req.query;
@@ -457,8 +456,7 @@ app.delete('/api/positions/:id', authenticateToken, async (req, res) => {
 
 // USERS CRUD
 app.get('/api/users', authenticateToken, async (req, res) => {
-  const pName = req.user.position_name || '';
-  if (req.user.role !== 'admin' && !pName.includes('Directorio')) {
+  if (req.user.role !== 'admin' && !req.user.can_view_metrics) {
     return res.status(403).json({ error: 'Forbidden' });
   }
   const { data, error } = await db

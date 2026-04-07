@@ -78,7 +78,7 @@ export default function AdminPanel({ token, user: currentUser }) {
       if (selectedUserId) queryParams.append('user_id', selectedUserId);
 
       const query = queryParams.toString() ? `?${queryParams.toString()}` : '';
-      const isDirectorio = currentUser?.position_name?.toLowerCase().includes('directorio');
+      const canViewMetrics = currentUser?.can_view_metrics;
       
       if (currentUser?.role === 'admin') {
         const [uRes, pRes, tRes, lkRes, lRes, sRes] = await Promise.all([
@@ -97,17 +97,17 @@ export default function AdminPanel({ token, user: currentUser }) {
         setLogs(Array.isArray(lRes.data) ? lRes.data : []);
         if (sRes.data) setStats(sRes.data);
       } else {
-        // Directorio also needs dashboard types for filtering
+        // Any user with can_view_metrics needs full data for filtering
         const [pRes, lRes, sRes, uRes, tRes, lkRes] = await Promise.all([
-          isDirectorio ? api.get('/positions').catch(e => ({ data: [] })) : Promise.resolve({ data: [] }),
+          canViewMetrics ? api.get('/positions').catch(e => ({ data: [] })) : Promise.resolve({ data: [] }),
           api.get('/logs' + query).catch(e => ({ data: [] })),
           api.get('/stats' + query).catch(e => ({ data: null })),
-          isDirectorio ? api.get('/users').catch(e => ({ data: [] })) : Promise.resolve({ data: [] }),
+          canViewMetrics ? api.get('/users').catch(e => ({ data: [] })) : Promise.resolve({ data: [] }),
           api.get('/dashboard-types').catch(e => ({ data: [] })),
-          isDirectorio ? api.get('/dashboard-links').catch(e => ({ data: [] })) : Promise.resolve({ data: [] })
+          canViewMetrics ? api.get('/dashboard-links').catch(e => ({ data: [] })) : Promise.resolve({ data: [] })
         ]);
         
-        if (isDirectorio) {
+        if (canViewMetrics) {
           setPositions(Array.isArray(pRes.data) ? pRes.data : []);
           setUsers(Array.isArray(uRes.data) ? uRes.data : []);
           setDashboardLinks(Array.isArray(lkRes.data) ? lkRes.data : []);
@@ -221,7 +221,7 @@ export default function AdminPanel({ token, user: currentUser }) {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-6 pt-4">
         <div className="flex flex-col">
           <h2 className="text-3xl font-black text-slate-800 tracking-tighter italic uppercase flex items-center gap-3">
-            {currentUser.name} <span className="text-sm font-bold text-slate-300 not-italic normal-case tracking-normal">| {currentUser.role === 'admin' ? 'Administrador del Sistema' : (currentUser.position_name?.toLowerCase().includes('directorio') ? 'Directorio' : 'Panel de Seguimiento')}</span>
+            {currentUser.name} <span className="text-sm font-bold text-slate-300 not-italic normal-case tracking-normal">| {currentUser.role === 'admin' ? 'Administrador del Sistema' : 'Métricas y Auditoría'}</span>
           </h2>
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mt-1">Status: Conectado • {new Date().toLocaleDateString()}</p>
         </div>
