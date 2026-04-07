@@ -1,6 +1,8 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('./database'); // Ahora es el cliente de Supabase
@@ -29,8 +31,43 @@ transporter.verify((error, success) => {
 });
 
 const app = express();
+
+// Proteccion XSS e Inyecciones de cabecera HTTP
+app.use(helmet()); 
 app.use(express.json());
-app.use(cors());
+
+// Restringir CORS (sólo permitimos orígenes aprobados)
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'https://tableros-delta.vercel.app'
+];
+app.use(cors({
+  origin: function(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('No permitido por la política CORS del servidor'));
+    }
+  }
+}));
+
+// Límite global contra Spam / Denegación de servicio (DDoS)
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 3000, 
+  message: { error: 'Demasiadas solicitudes. Servidor bloqueado temporalmente por seguridad.' }
+});
+
+// Límite estricto para Login (Fuerza Bruta)
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 15, // máximo 15 intentos en 15 minutos por IP
+  message: { error: 'Múltiples intentos detectados. Cuenta bloqueada temporalmente por 15 minutos.' }
+});
+
+app.use('/api/', globalLimiter);
+
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
   next();
@@ -55,7 +92,7 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-app.post('/api/login', async (req, res) => {
+app.post('/api/login', loginLimiter, async (req, res) => {
   const { username, password } = req.body;
   
   const { data: user, error } = await db
