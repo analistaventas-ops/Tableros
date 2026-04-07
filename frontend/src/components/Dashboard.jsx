@@ -59,7 +59,7 @@ export default function Dashboard({ user, onLogout }) {
     };
   }, [showMonitoring, activeDashboard]);
 
-  const canSeeMonitoring = user.role === 'admin' || user.position_name?.toLowerCase().includes('directorio');
+  const canSeeMonitoring = user.role === 'admin' || user.can_view_metrics;
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
