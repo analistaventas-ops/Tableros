@@ -58,7 +58,7 @@ export default function AdminPanel({ token, user: currentUser }) {
 
   const [showPosModal, setShowPosModal] = useState(false);
   const [editingPos, setEditingPos] = useState(null);
-  const [posFormData, setPosFormData] = useState({ name: '' });
+  const [posFormData, setPosFormData] = useState({ name: '', can_view_metrics: false });
 
   const [showTypeModal, setShowTypeModal] = useState(false);
   const [editingType, setEditingType] = useState(null);
@@ -174,7 +174,7 @@ export default function AdminPanel({ token, user: currentUser }) {
 
   const handlePosModal = (p = null) => {
     setEditingPos(p);
-    setPosFormData(p ? { name: p.name } : { name: '' });
+    setPosFormData(p ? { name: p.name, can_view_metrics: p.can_view_metrics || false } : { name: '', can_view_metrics: false });
     setShowPosModal(true);
   };
   const handlePosSave = async (e) => {
@@ -297,11 +297,18 @@ export default function AdminPanel({ token, user: currentUser }) {
                   <button onClick={() => handlePosModal()} className="bg-indigo-600 text-white px-5 py-2 rounded-xl text-[10px] font-black uppercase transition-all shadow-md">Nuevo Puesto</button>
                 </div>
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 text-slate-400 text-[9px] uppercase font-black border-b"><tr><th className="p-5 pl-8">Nombre del Área</th><th className="p-5 text-right pr-8">Acciones</th></tr></thead>
+                  <thead className="bg-slate-50 text-slate-400 text-[9px] uppercase font-black border-b"><tr><th className="p-5 pl-8">Nombre del Área</th><th className="p-5 text-center">Permisos de Análisis</th><th className="p-5 text-right pr-8">Acciones</th></tr></thead>
                   <tbody className="divide-y">
                     {positions.map(p => (
                       <tr key={p.id} className="hover:bg-slate-50 group">
                         <td className="p-5 pl-8 font-black text-indigo-700 uppercase tracking-tighter text-sm">{p.name}</td>
+                        <td className="p-5 text-center">
+                          {p.can_view_metrics ? (
+                            <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-[9px] font-black tracking-widest uppercase">Puede ver Métricas</span>
+                          ) : (
+                            <span className="bg-slate-100 text-slate-400 px-3 py-1 rounded-full text-[9px] font-black tracking-widest uppercase">Sin Acceso</span>
+                          )}
+                        </td>
                         <td className="p-5 text-right pr-8">
                           <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                              <button onClick={() => handlePosModal(p)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-xl"><Edit size={16} /></button>
@@ -665,7 +672,14 @@ export default function AdminPanel({ token, user: currentUser }) {
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-6 z-[100]">
           <form onSubmit={handlePosSave} className="bg-white p-10 rounded-[2.5rem] shadow-2xl w-full max-w-sm border border-slate-200 animate-in zoom-in-95 duration-200">
              <h3 className="text-xl font-black text-slate-800 mb-6 uppercase italic">Configurar Puesto</h3>
-             <input required placeholder="Nombre del Área" value={posFormData.name} onChange={e => setPosFormData({...posFormData, name: e.target.value})} className="w-full border border-slate-200 p-4 rounded-2xl bg-slate-50 focus:ring-4 focus:ring-indigo-100 outline-none font-black text-slate-700" />
+             <input required placeholder="Nombre del Área" value={posFormData.name} onChange={e => setPosFormData({...posFormData, name: e.target.value})} className="w-full border border-slate-200 p-4 rounded-2xl bg-slate-50 focus:ring-4 focus:ring-indigo-100 outline-none font-black text-slate-700 mb-4" />
+             
+             <label className={`flex items-center gap-3 p-4 rounded-2xl cursor-pointer transition-all border ${posFormData.can_view_metrics ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' : 'bg-slate-50 border-slate-200 text-slate-500 hover:border-indigo-300'}`}>
+                <input type="checkbox" className="hidden" checked={posFormData.can_view_metrics} onChange={e => setPosFormData({...posFormData, can_view_metrics: e.target.checked})} />
+                <Activity size={18} />
+                <span className="text-[10px] font-black uppercase tracking-widest leading-none mt-1">Este puesto puede ver las métricas</span>
+             </label>
+
              <div className="flex gap-2 mt-8">
                <button type="button" onClick={() => setShowPosModal(false)} className="flex-1 p-4 rounded-2xl font-black text-[10px] uppercase text-slate-400">Cerrar</button>
                <button type="submit" className="flex-1 bg-indigo-600 text-white p-4 rounded-2xl font-black text-[10px] uppercase shadow-lg shadow-indigo-100">Guardar</button>

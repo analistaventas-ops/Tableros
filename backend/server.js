@@ -97,7 +97,7 @@ app.post('/api/login', loginLimiter, async (req, res) => {
   
   const { data: user, error } = await db
     .from('users')
-    .select('*, user_positions(positions(name))')
+    .select('*, user_positions(positions(name, can_view_metrics))')
     .eq('username', username)
     .single();
 
@@ -109,11 +109,14 @@ app.post('/api/login', loginLimiter, async (req, res) => {
   const passwordIsValid = bcrypt.compareSync(password, user.password_hash);
   if (!passwordIsValid) return res.status(401).json({ error: 'Invalid password' });
 
+  const can_view_metrics = positions.some(p => p.can_view_metrics === true);
+
   const token = jwt.sign({ 
     id: user.id, 
     username: user.username, 
     role: user.role, 
-    position_name: position_name 
+    position_name: position_name,
+    can_view_metrics: can_view_metrics
   }, JWT_SECRET, { expiresIn: '8h' });
 
   // Registro de acceso (log inicial de login en activity_sessions)
@@ -126,7 +129,7 @@ app.post('/api/login', loginLimiter, async (req, res) => {
     last_ping: new Date().toISOString()
   }, { onConflict: 'user_id, dashboard_url, session_date' });
 
-  res.json({ token, user: { id: user.id, username: user.username, name: user.name, role: user.role, position_name: position_name } });
+  res.json({ token, user: { id: user.id, username: user.username, name: user.name, role: user.role, position_name: position_name, can_view_metrics } });
 });
 
 app.get('/api/me', authenticateToken, async (req, res) => {
@@ -141,9 +144,9 @@ app.get('/api/me', authenticateToken, async (req, res) => {
   const positions = user.user_positions ? user.user_positions.map(up => up.positions).filter(Boolean) : [];
   
   res.json({
-    ...user,
     positions,
-    position_name: positions.length > 0 ? positions.map(p => p.name).join(', ') : null
+    position_name: positions.length > 0 ? positions.map(p => p.name).join(', ') : null,
+    can_view_metrics: positions.some(p => p.can_view_metrics === true)
   });
 });
 
@@ -272,8 +275,7 @@ app.get('/api/logs', authenticateToken, async (req, res) => {
 });
 
 app.get('/api/stats', authenticateToken, async (req, res) => {
-  const pName = req.user.position_name || '';
-  if (req.user.role !== 'admin' && !pName.includes('Directorio')) {
+  if (req.user.role !== 'admin' && !req.user.can_view_metrics) {
     return res.status(403).json({ error: 'Forbidden' });
   }
 
@@ -409,22 +411,20 @@ app.get('/api/positions', authenticateToken, async (req, res) => {
   res.json(data);
 });
 
-// Se eliminó el endpoint /api/logs/dashboard por redundancia con el heartbeat
-
 app.post('/api/positions', authenticateToken, async (req, res) => {
   if (req.user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
-  const { name } = req.body;
+  const { name, can_view_metrics } = req.body;
   if (!name) return res.status(400).json({ error: 'Missing name' });
   
-  const { data, error } = await db.from('positions').insert({ name }).select().single();
+  const { data, error } = await db.from('positions').insert({ name, can_view_metrics: can_view_metrics ? true : false }).select().single();
   if (error) return res.status(500).json({ error: 'Database error or duplicate name' });
   res.json(data);
 });
 
 app.put('/api/positions/:id', authenticateToken, async (req, res) => {
   if (req.user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
-  const { name } = req.body;
-  const { error } = await db.from('positions').update({ name }).eq('id', req.params.id);
+  const { name, can_view_metrics } = req.body;
+  const { error } = await db.from('positions').update({ name, can_view_metrics: can_view_metrics ? true : false }).eq('id', req.params.id);
   if (error) return res.status(500).json({ error: 'Database error' });
   res.json({ success: true });
 });
