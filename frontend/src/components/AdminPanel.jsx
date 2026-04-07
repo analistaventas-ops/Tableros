@@ -213,6 +213,18 @@ export default function AdminPanel({ token, user: currentUser }) {
       setShowLinkModal(false); fetchData();
     } catch (err) { alert(err.response?.data?.error || "Error"); }
   };
+  const handleLinkDel = async (id) => {
+    if (!window.confirm("¿Eliminar esta asignación?")) return;
+    try { await api.delete(`/dashboard-links/${id}`); fetchData(); } catch (err) { alert(err.response?.data?.error || "Error al eliminar"); }
+  };
+  const handlePosDel = async (id) => {
+    if (!window.confirm("¿Eliminar este puesto? Solo se puede si no tiene usuarios asignados.")) return;
+    try { await api.delete(`/positions/${id}`); fetchData(); } catch (err) { alert(err.response?.data?.error || "Error al eliminar"); }
+  };
+  const handleTypeDel = async (id) => {
+    if (!window.confirm("¿Eliminar este concepto de reporte?")) return;
+    try { await api.delete(`/dashboard-types/${id}`); fetchData(); } catch (err) { alert(err.response?.data?.error || "Error al eliminar"); }
+  };
 
   const COLORS = ['#3b82f6', '#8b5cf6', '#6366f1', '#10b981', '#f59e0b', '#ef4444'];
 
@@ -312,6 +324,7 @@ export default function AdminPanel({ token, user: currentUser }) {
                         <td className="p-5 text-right pr-8">
                           <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                              <button onClick={() => handlePosModal(p)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-xl"><Edit size={16} /></button>
+                             <button onClick={() => handlePosDel(p.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-xl"><Trash2 size={16} /></button>
                           </div>
                         </td>
                       </tr>
@@ -334,7 +347,10 @@ export default function AdminPanel({ token, user: currentUser }) {
                       <tr key={t.id} className="hover:bg-slate-50 group">
                         <td className="p-5 pl-8">{t.name}</td>
                         <td className="p-5 text-right pr-8">
-                          <button onClick={() => handleTypeModal(t)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"><Edit size={16} /></button>
+                          <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onClick={() => handleTypeModal(t)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-xl"><Edit size={16} /></button>
+                            <button onClick={() => handleTypeDel(t.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-xl"><Trash2 size={16} /></button>
+                          </div>
                         </td>
                       </tr>
                     ))}

@@ -375,8 +375,12 @@ app.put('/api/dashboard-types/:id', authenticateToken, async (req, res) => {
 
 app.delete('/api/dashboard-types/:id', authenticateToken, async (req, res) => {
   if (req.user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+  
+  // Clean up dependent dashboard_links first
+  await db.from('dashboard_links').delete().eq('dashboard_type_id', req.params.id);
+  
   const { error } = await db.from('dashboard_types').delete().eq('id', req.params.id);
-  if (error) return res.status(500).json({ error: 'Database error' });
+  if (error) return res.status(500).json({ error: 'Database error: ' + error.message });
   res.json({ success: true });
 });
 
@@ -541,8 +545,12 @@ app.delete('/api/users/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   if (id == req.user.id) return res.status(400).json({ error: 'Cannot delete yourself' });
 
+  // Clean up dependent tables first (FK constraints)
+  await db.from('user_positions').delete().eq('user_id', id);
+  await db.from('activity_sessions').delete().eq('user_id', id);
+
   const { error } = await db.from('users').delete().eq('id', id);
-  if (error) return res.status(500).json({ error: 'Database error' });
+  if (error) return res.status(500).json({ error: 'Database error: ' + error.message });
   res.json({ success: true });
 });
 
