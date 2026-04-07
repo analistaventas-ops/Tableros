@@ -14,7 +14,7 @@ function App() {
       if (token) {
         try {
           // api ya incluye el header via interceptor
-          const res = await api.get('/api/me');
+          const res = await api.get('/me');
           setUser({ ...res.data, token });
         } catch (error) {
           localStorage.removeItem('token');

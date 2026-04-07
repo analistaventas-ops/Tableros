@@ -149,6 +149,10 @@ app.get('/api/me', authenticateToken, async (req, res) => {
   const positions = user.user_positions ? user.user_positions.map(up => up.positions).filter(Boolean) : [];
   
   res.json({
+    id: user.id,
+    username: user.username,
+    name: user.name,
+    role: user.role,
     positions,
     position_name: positions.length > 0 ? positions.map(p => p.name).join(', ') : null,
     can_view_metrics: positions.some(p => p.can_view_metrics === true)
