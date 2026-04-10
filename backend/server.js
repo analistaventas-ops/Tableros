@@ -584,23 +584,40 @@ app.post('/api/users/send-credentials/:id', authenticateToken, async (req, res) 
     await transporter.sendMail({
       from: fromEmail,
       to: user.email,
-      subject: 'Tus credenciales - Portal Neumáticos Pons',
+      subject: 'Tus credenciales - Portal de Tableros Neumáticos Pons',
       html: `
-        <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px; max-width: 600px;">
-          <h2 style="color: #1e293b; border-bottom: 2px solid #3b82f6; padding-bottom: 10px;">Acceso al Portal de Tableros</h2>
+        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 30px; border: 1px solid #e2e8f0; border-radius: 16px; max-width: 650px; color: #334155; line-height: 1.6;">
+          <div style="text-align: center; margin-bottom: 25px;">
+             <h1 style="color: #1e293b; font-size: 24px; margin: 0; text-transform: uppercase; letter-spacing: -0.5px;">Acceso al Portal Interno</h1>
+             <p style="color: #64748b; font-size: 14px;">Neumáticos Pons - Inteligencia de Negocios</p>
+          </div>
+
           <p>Hola <strong>${user.name}</strong>,</p>
-          <p>Se te ha asignado acceso al portal interno de Neumáticos Pons. Aquí están tus datos de acceso:</p>
-          <div style="background: #f8fafc; padding: 20px; border-radius: 15px; margin: 20px 0; border: 1px solid #e2e8f0;">
-            <p style="margin: 5px 0;"><strong>💻 Usuario:</strong> ${user.username}</p>
-            <p style="margin: 5px 0;"><strong>🔑 Contraseña:</strong> ${user.password_plain}</p>
+          <p>Te damos la bienvenida al portal oficial de visualización de datos. Se te ha asignado acceso para consultar los indicadores clave de tu área.</p>
+          
+          <div style="background: #f8fafc; padding: 25px; border-radius: 12px; margin: 25px 0; border: 1px solid #cbd5e1;">
+            <p style="margin: 0 0 10px 0; font-weight: bold; color: #2563eb; text-transform: uppercase; font-size: 12px;">Tus Credenciales de Acceso:</p>
+            <p style="margin: 5px 0; font-size: 16px;"><strong>💻 Usuario:</strong> ${user.username}</p>
+            <p style="margin: 5px 0; font-size: 16px;"><strong>🔑 Contraseña:</strong> ${user.password_plain}</p>
           </div>
-          <p>Puedes acceder a la plataforma haciendo clic en el siguiente botón:</p>
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="https://tableros-delta.vercel.app" style="background: #2563eb; color: white; padding: 15px 30px; text-decoration: none; border-radius: 10px; font-weight: bold; display: inline-block;">Acceder al Portal</a>
+
+          <div style="background: #eff6ff; padding: 20px; border-radius: 12px; margin-bottom: 25px; border-left: 5px solid #3b82f6;">
+            <h3 style="margin-top: 0; color: #1d4ed8; font-size: 16px;">📖 Guía de Uso del Portal:</h3>
+            <ul style="padding-left: 20px; font-size: 14px; margin-bottom: 0;">
+              <li style="margin-bottom: 8px;"><strong>Visualización:</strong> Una vez ingreses, verás automáticamente los tableros asignados a tu puesto.</li>
+              <li style="margin-bottom: 8px;"><strong>Múltiples Tableros:</strong> Si tienes más de uno, verás solapas (pestañas) en la parte superior para cambiar entre ellos.</li>
+              <li style="margin-bottom: 8px;"><strong>Privacidad:</strong> Por seguridad, te recomendamos cambiar tu clave inicial haciendo clic en el botón <strong>"🔑 Cambiar Clave"</strong> que encontrarás arriba a la derecha en la cabecera.</li>
+              <li><strong>Cierre de Sesión:</strong> No olvides cerrar tu sesión al finalizar, especialmente en equipos compartidos.</li>
+            </ul>
           </div>
-          <p style="font-size: 13px; color: #64748b;">Si el botón no funciona, copia y pega el siguiente enlace en tu navegador:<br/>https://tableros-delta.vercel.app</p>
-          <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 30px 0;" />
-          <p style="font-size: 12px; color: #94a3b8; text-align: center;">Este es un mensaje automático del sistema de Neumáticos Pons.</p>
+
+          <div style="text-align: center; margin: 35px 0;">
+            <a href="https://tableros-delta.vercel.app" style="background: #2563eb; color: white; padding: 16px 32px; text-decoration: none; border-radius: 10px; font-weight: bold; display: inline-block; font-size: 16px; box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);">Entrar a la Plataforma</a>
+          </div>
+
+          <p style="font-size: 13px; color: #94a3b8; text-align: center;">Si el botón no funciona, copia este enlace: https://tableros-delta.vercel.app</p>
+          <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 30px 0;" />
+          <p style="font-size: 11px; color: #cbd5e1; text-align: center;">Este es un correo automático generado por el sistema de auditoría y métricas de Neumáticos Pons.</p>
         </div>
       `
     });
