@@ -610,9 +610,45 @@ app.post('/api/users/send-credentials/:id', authenticateToken, async (req, res) 
     res.status(500).json({ 
       error: 'Error de servidor SMTP', 
       details: mailErr.message,
-      technical: mailErr.code || 'UNKNOWN'
+      technical: mailErr.code || 'UNKNOWN' 
     });
   }
+});
+
+// NUEVO: Cambio de contraseña por el propio usuario
+app.put('/api/auth/change-password', authenticateToken, async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  if (!currentPassword || !newPassword) return res.status(400).json({ error: 'Faltan datos' });
+
+  // Buscar usuario
+  const { data: user, error } = await db
+    .from('users')
+    .select('password_hash')
+    .eq('id', req.user.id)
+    .single();
+
+  if (error || !user) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+  // Validar contraseña actual
+  const passwordIsValid = bcrypt.compareSync(currentPassword, user.password_hash);
+  if (!passwordIsValid) return res.status(401).json({ error: 'La contraseña actual es incorrecta' });
+
+  // Hashear nueva contraseña
+  const salt = bcrypt.genSaltSync(10);
+  const hash = bcrypt.hashSync(newPassword, salt);
+
+  // Actualizar (asumiendo que actualizamos password_hash y opcionalmente password_plain si lo usas para re-envio)
+  const { error: updateError } = await db
+    .from('users')
+    .update({ 
+      password_hash: hash,
+      password_plain: newPassword // Lo mantenemos actualizado para la funcion de "enviar credenciales" del admin
+    })
+    .eq('id', req.user.id);
+
+  if (updateError) return res.status(500).json({ error: 'Error al actualizar base de datos' });
+
+  res.json({ success: true, message: 'Contraseña actualizada correctamente' });
 });
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
