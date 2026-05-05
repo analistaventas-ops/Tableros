@@ -166,9 +166,17 @@ export default function AdminPanel({ token, user: currentUser }) {
       alert(res.data.message || "Enviado con éxito");
     } catch (err) {
       const errorMsg = err.response?.data?.error || "Error al enviar";
+      
+      // Si el error es de token inválido, el interceptor de api.js ya se encargará de redirigir,
+      // pero mostramos un mensaje amigable aquí antes de que eso pase.
+      if (errorMsg === "Invalid token") {
+        alert("Tu sesión ha expirado (8 horas de límite). Por favor, vuelve a iniciar sesión.");
+        return;
+      }
+
       const details = err.response?.data?.details || "";
       const technical = err.response?.data?.technical || "";
-      alert(`${errorMsg}\nDetalle: ${details}\nCódigo: ${technical}\n\nREQUERIDO: Configurar SMTP_USER y SMTP_PASS en Vercel y usar una 'Contraseña de Aplicación' si es Gmail.`);
+      alert(`${errorMsg}\nDetalle: ${details}\nCódigo: ${technical}\n\nREQUERIDO: Si es un problema técnico del mail, verifica SMTP_USER y SMTP_PASS en Vercel. Si usas Gmail, recuerda usar una 'Contraseña de Aplicación'.`);
     }
   };
 
@@ -468,11 +476,11 @@ export default function AdminPanel({ token, user: currentUser }) {
           {/* KPI GRILL (7 CARDS) */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4">
             {[
-              { label: 'Activos (30d)', val: stats.kpis?.active_users_30d || 0, icon: <UserCheck />, clr: 'blue', var: stats.kpis?.active_users_30d_var },
-              { label: '% Adopción', val: (stats.kpis?.adoption_rate || 0) + '%', icon: <Percent />, clr: 'emerald', var: stats.kpis?.adoption_rate_var },
-              { label: 'Total Sesiones', val: stats.kpis?.total_sessions || 0, icon: <Activity />, clr: 'indigo', var: stats.kpis?.total_sessions_var },
-              { label: 'Avg Sesiones', val: stats.kpis?.sessions_per_user || 0, icon: <Target />, clr: 'amber', var: stats.kpis?.sessions_per_user_var },
-              { label: 'Avg Tiempo', val: (stats.kpis?.avg_time_per_session || 0) + 'm', icon: <Clock />, clr: 'purple', var: stats.kpis?.avg_time_per_session_var },
+              { label: 'Activos (30d)', val: stats.kpis?.active_users_30d || 0, icon: <UserCheck />, clr: 'blue', var: stats.kpis?.var_active_30d },
+              { label: '% Adopción', val: (stats.kpis?.adoption_rate || 0) + '%', icon: <Percent />, clr: 'emerald', var: null },
+              { label: 'Total Sesiones', val: stats.kpis?.total_sessions || 0, icon: <Activity />, clr: 'indigo', var: stats.kpis?.var_sessions },
+              { label: 'Avg Sesiones', val: stats.kpis?.avg_sessions_user || 0, icon: <Target />, clr: 'amber', var: null },
+              { label: 'Avg Tiempo', val: (stats.kpis?.avg_time_session || 0) + 'm', icon: <Clock />, clr: 'purple', var: stats.kpis?.var_time },
               { label: 'Top Tablero', val: stats.kpis?.top_dashboard?.name || 'N/A', icon: <Star />, clr: 'rose', var: null, sub: `${stats.kpis?.top_dashboard?.count || 0} accesos` },
               { label: 'Inactivos', val: stats.kpis?.inactive_users_count || 0, icon: <Trash />, clr: 'slate', var: null }
             ].map((k, i) => {
@@ -539,22 +547,22 @@ export default function AdminPanel({ token, user: currentUser }) {
             <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm">
                 <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-6 flex items-center gap-2"><Target size={18} className="text-emerald-500" /> Engagement Score</h3>
                 <div className="space-y-4">
-                   {(stats.engagement_segments || []).map((seg, idx) => {
+                   {(stats.engagement || []).map((seg, idx) => {
                      const engagementColors = ['bg-slate-400', 'bg-blue-400', 'bg-indigo-500', 'bg-emerald-500'];
                      const barColor = engagementColors[idx % engagementColors.length];
                      return (
                        <div key={idx} className="space-y-1.5">
                           <div className="flex justify-between text-[10px] font-black uppercase tracking-tight">
                              <span className="text-slate-500">{seg.segment}</span>
-                             <span className="text-slate-800">{seg.users} usuarios</span>
+                             <span className="text-slate-800">{seg.user_count} usuarios</span>
                           </div>
                           <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                             <div className={`h-full transition-all duration-1000 ${barColor}`} style={{ width: `${(seg.users / (stats.kpis?.active_users_30d || 1) * 100)}%` }}></div>
+                             <div className={`h-full transition-all duration-1000 ${barColor}`} style={{ width: `${(seg.user_count / (stats.kpis?.active_users_30d || 1) * 100)}%` }}></div>
                           </div>
                        </div>
                      );
                    })}
-                   {(!stats.engagement_segments || stats.engagement_segments.length === 0) && (
+                   {(!stats.engagement || stats.engagement.length === 0) && (
                      <div className="flex flex-col items-center justify-center h-48 opacity-20 italic font-black text-xs uppercase">No hay segmentos suficientes</div>
                    )}
                 </div>

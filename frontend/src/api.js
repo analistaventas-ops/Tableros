@@ -13,4 +13,23 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Interceptor para manejar errores de sesión (401/403)
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+      const errorMsg = error.response.data?.error;
+      if (errorMsg === "Invalid token" || errorMsg === "Access denied") {
+        console.warn("Sesión expirada o inválida. Limpiando storage...");
+        localStorage.removeItem('token');
+        // Redirigir al login si no estamos ya allí
+        if (!window.location.pathname.includes('/login')) {
+          window.location.href = '/login';
+        }
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default api;
