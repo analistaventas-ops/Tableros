@@ -290,26 +290,35 @@ app.get('/api/stats', authenticateToken, async (req, res) => {
   try {
     const { 
       from, to, positionId, dashboardName, userId,
-      start_date, end_date, position_id, dashboard_name, user_id 
+      start_date, end_date, position_id, dashboard_name, user_id,
+      exclude_admins
     } = req.query;
     
-    const { data: statsData, error: statsError } = await db.rpc('get_enhanced_stats', { 
+    const params = { 
       start_date: start_date || from || null, 
       end_date: end_date || to || null,
       target_position_id: (position_id || positionId) ? parseInt(position_id || positionId) : null,
       target_dashboard_name: dashboard_name || dashboardName || null,
       target_user_id: (user_id || userId) ? parseInt(user_id || userId) : null,
-      exclude_admins: true
-    });
+      exclude_admins: exclude_admins === 'true' ? true : false
+    };
+
+    console.log(`[Stats] Request by ${req.user.username} (Role: ${req.user.role}, ID: ${req.user.id}). Params:`, params);
+
+    const { data: statsData, error: statsError } = await db.rpc('get_enhanced_stats', params);
     
     if (statsError) {
-      console.error("Stats RPC Error:", statsError);
+      console.error("[Stats] RPC Error:", statsError);
       return res.status(200).json(null); 
     }
     
+    if (!statsData || !statsData.kpis) {
+      console.warn("[Stats] RPC returned empty or invalid data structure");
+    }
+
     res.json(statsData);
   } catch (err) {
-    console.error("Stats processing error:", err);
+    console.error("[Stats] Internal Error:", err);
     res.status(200).json(null);
   }
 });

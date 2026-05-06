@@ -16,6 +16,7 @@ BEGIN
 END $$;
 
 -- SQL Script to upgrade get_enhanced_stats for Advanced Product Analytics (UTC-3 Focused)
+-- Updated with SECURITY DEFINER and robust JOINs to prevent zero-values for non-admins
 CREATE OR REPLACE FUNCTION get_enhanced_stats(
     start_date TEXT DEFAULT NULL, 
     end_date TEXT DEFAULT NULL,
@@ -65,14 +66,16 @@ BEGIN
     prev_end := curr_start - INTERVAL '1 day';
     prev_start := prev_end - (days_diff - 1) * INTERVAL '1 day';
 
-    -- 1. Base Metrics - Current Period (Dashboard sessions only)
+    -- 1. Base Metrics - Current Period
+    -- Note: We use a subquery to deduplicate dashboard_links in case a URL is assigned to multiple positions
+    -- And we use LEFT JOIN to ensure we don't lose sessions if a URL mapping is missing (though we'd prefer it matches)
     SELECT 
         COALESCE(SUM(s.duration_minutes), 0),
         COUNT(s.id),
         COUNT(DISTINCT s.user_id)
     INTO curr_total_minutes, curr_total_sessions, curr_unique_users
     FROM activity_sessions s
-    JOIN dashboard_links dl ON s.dashboard_url = dl.url
+    LEFT JOIN (SELECT DISTINCT url, dashboard_type_id FROM dashboard_links) dl ON s.dashboard_url = dl.url
     WHERE s.session_date BETWEEN curr_start AND curr_end
       AND (target_user_id IS NULL OR s.user_id = target_user_id)
       AND (NOT exclude_admins OR s.user_id NOT IN (SELECT id FROM users WHERE role = 'admin'))
@@ -81,14 +84,14 @@ BEGIN
           SELECT 1 FROM dashboard_types dt WHERE dl.dashboard_type_id = dt.id AND dt.name = target_dashboard_name
       ));
 
-    -- 2. Base Metrics - Previous Period (Dashboard sessions only)
+    -- 2. Base Metrics - Previous Period
     SELECT 
         COALESCE(SUM(s.duration_minutes), 0),
         COUNT(s.id),
         COUNT(DISTINCT s.user_id)
     INTO prev_total_minutes, prev_total_sessions, prev_unique_users
     FROM activity_sessions s
-    JOIN dashboard_links dl ON s.dashboard_url = dl.url
+    LEFT JOIN (SELECT DISTINCT url, dashboard_type_id FROM dashboard_links) dl ON s.dashboard_url = dl.url
     WHERE s.session_date BETWEEN prev_start AND prev_end
       AND (target_user_id IS NULL OR s.user_id = target_user_id)
       AND (NOT exclude_admins OR s.user_id NOT IN (SELECT id FROM users WHERE role = 'admin'))
@@ -105,11 +108,11 @@ BEGIN
     WHERE session_date >= (today_ar - INTERVAL '30 days')
     AND (NOT exclude_admins OR user_id NOT IN (SELECT id FROM users WHERE role = 'admin'));
 
-    -- 4. Top Dashboard info (Excluding non-dashboard activities)
+    -- 4. Top Dashboard info
     SELECT dt.name, COUNT(*) as sessions
     INTO top_dashboard_name, top_dashboard_count
     FROM activity_sessions s
-    INNER JOIN dashboard_links dl ON s.dashboard_url = dl.url
+    INNER JOIN (SELECT DISTINCT url, dashboard_type_id FROM dashboard_links) dl ON s.dashboard_url = dl.url
     INNER JOIN dashboard_types dt ON dl.dashboard_type_id = dt.id
     WHERE dt.name NOT IN ('Portal/login', 'Admin')
     AND s.session_date BETWEEN curr_start AND curr_end
@@ -138,14 +141,14 @@ BEGIN
         ORDER BY ds.d ASC
     ) t;
 
-    -- 6. By Dashboard Breakdown (Excluding non-dashboard entries like Portal/login)
+    -- 6. By Dashboard Breakdown
     SELECT json_agg(t) INTO by_dashboard_data
     FROM (
         SELECT 
             dt.name as name,
             COUNT(*) as count
         FROM activity_sessions s
-        JOIN dashboard_links dl ON s.dashboard_url = dl.url
+        JOIN (SELECT DISTINCT url, dashboard_type_id FROM dashboard_links) dl ON s.dashboard_url = dl.url
         JOIN dashboard_types dt ON dl.dashboard_type_id = dt.id
         WHERE dt.name NOT IN ('Portal/login', 'Admin')
         AND s.session_date BETWEEN curr_start AND curr_end
@@ -163,7 +166,6 @@ BEGIN
         FROM positions p
         JOIN user_positions up ON p.id = up.position_id
         JOIN activity_sessions s ON up.user_id = s.user_id
-        JOIN dashboard_links dl ON s.dashboard_url = dl.url
         WHERE s.session_date BETWEEN curr_start AND curr_end
         AND (NOT exclude_admins OR s.user_id NOT IN (SELECT id FROM users WHERE role = 'admin'))
         GROUP BY p.name
@@ -186,7 +188,6 @@ BEGIN
                     ELSE '+10 Sesiones'
                 END as segment
             FROM activity_sessions s
-            JOIN dashboard_links dl ON s.dashboard_url = dl.url
             WHERE s.session_date BETWEEN curr_start AND curr_end
             AND (NOT exclude_admins OR s.user_id NOT IN (SELECT id FROM users WHERE role = 'admin'))
             GROUP BY s.user_id
@@ -203,7 +204,6 @@ BEGIN
             SUM(s.duration_minutes) as minutes
         FROM users u
         JOIN activity_sessions s ON u.id = s.user_id
-        JOIN dashboard_links dl ON s.dashboard_url = dl.url
         WHERE s.session_date BETWEEN curr_start AND curr_end
         AND (NOT exclude_admins OR s.user_id NOT IN (SELECT id FROM users WHERE role = 'admin'))
         GROUP BY 1
@@ -236,4 +236,4 @@ BEGIN
 
     RETURN result;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
