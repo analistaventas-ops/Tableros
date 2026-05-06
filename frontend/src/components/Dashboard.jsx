@@ -172,7 +172,7 @@ export default function Dashboard({ user, onLogout }) {
                 ))}
               </div>
             )}
-            <div className="flex-1 relative overflow-hidden bg-slate-200">
+            <div className="flex-1 relative overflow-hidden bg-slate-200 min-h-0">
               {/* Iframe Shield: Transparent overlay to prevent easy direct interaction/cloning via context menu */}
               <div 
                 className="absolute inset-x-0 top-0 h-10 z-20" 
@@ -185,9 +185,9 @@ export default function Dashboard({ user, onLogout }) {
                 style={{ opacity: obsUrl ? 1 : 0 }}
                 allowFullScreen={true}
               ></iframe>
-              {/* Power BI Bottom Covers - Adjusted for mobile to cover corners only with higher priority */}
-              <div className="absolute bottom-0 left-0 w-24 md:w-[200px] h-10 md:h-[36px] bg-[#f3f2f1] z-50 pointer-events-none"></div>
-              <div className="absolute bottom-0 right-0 w-32 md:w-[220px] h-10 md:h-[36px] bg-[#f3f2f1] z-50 pointer-events-none"></div>
+              {/* Power BI Bottom Covers - Reduced widths on mobile to clear the central navigation bar */}
+              <div className="absolute bottom-0 left-0 w-14 md:w-[200px] h-9 md:h-[36px] bg-[#f3f2f1] z-50 pointer-events-none"></div>
+              <div className="absolute bottom-0 right-0 w-14 md:w-[220px] h-9 md:h-[36px] bg-[#f3f2f1] z-50 pointer-events-none"></div>
             </div>
           </div>
         ) : (
