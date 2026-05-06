@@ -237,8 +237,8 @@ export default function AdminPanel({ token, user: currentUser }) {
   const COLORS = ['#3b82f6', '#8b5cf6', '#6366f1', '#10b981', '#f59e0b', '#ef4444'];
 
   return (
-    <div className="p-8 bg-slate-50 min-h-screen pb-24">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-6 pt-4">
+    <div className="p-4 md:p-8 bg-slate-50 min-h-screen pb-24">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end mb-8 gap-6 pt-4">
         <div className="flex flex-col">
           <h2 className="text-3xl font-black text-slate-800 tracking-tighter italic uppercase flex items-center gap-3">
             {currentUser.name} <span className="text-sm font-bold text-slate-300 not-italic normal-case tracking-normal">| {currentUser.role === 'admin' ? 'Administrador del Sistema' : 'Métricas y Auditoría'}</span>
@@ -246,16 +246,16 @@ export default function AdminPanel({ token, user: currentUser }) {
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mt-1">Status: Conectado • {new Date().toLocaleDateString()}</p>
         </div>
 
-        <div className="flex bg-white rounded-2xl shadow-sm border border-slate-200 p-1.5 gap-1.5 transition-all">
+        <div className="flex bg-white rounded-2xl shadow-sm border border-slate-200 p-1 md:p-1.5 gap-1 md:gap-1.5 transition-all overflow-x-auto no-scrollbar max-w-full">
           {currentUser.role === 'admin' && (
             <>
-              <button onClick={() => setActiveTab('users')} className={`px-5 py-2.5 text-[10px] font-black uppercase transition-all rounded-xl ${activeTab === 'users' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50'}`}>Colaboradores</button>
-              <button onClick={() => setActiveTab('positions')} className={`px-5 py-2.5 text-[10px] font-black uppercase transition-all rounded-xl ${activeTab === 'positions' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50'}`}>Puestos</button>
-              <button onClick={() => setActiveTab('types')} className={`px-5 py-2.5 text-[10px] font-black uppercase transition-all rounded-xl ${activeTab === 'types' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50'}`}>Conceptos</button>
-              <button onClick={() => setActiveTab('links')} className={`px-5 py-2.5 text-[10px] font-black uppercase transition-all rounded-xl ${activeTab === 'links' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50'}`}>Asignaciones</button>
+              <button onClick={() => setActiveTab('users')} className={`px-4 md:px-5 py-2 md:py-2.5 text-[9px] md:text-[10px] font-black uppercase transition-all rounded-xl whitespace-nowrap ${activeTab === 'users' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50'}`}>Colaboradores</button>
+              <button onClick={() => setActiveTab('positions')} className={`px-4 md:px-5 py-2 md:py-2.5 text-[9px] md:text-[10px] font-black uppercase transition-all rounded-xl whitespace-nowrap ${activeTab === 'positions' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50'}`}>Puestos</button>
+              <button onClick={() => setActiveTab('types')} className={`px-4 md:px-5 py-2 md:py-2.5 text-[9px] md:text-[10px] font-black uppercase transition-all rounded-xl whitespace-nowrap ${activeTab === 'types' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50'}`}>Conceptos</button>
+              <button onClick={() => setActiveTab('links')} className={`px-4 md:px-5 py-2 md:py-2.5 text-[9px] md:text-[10px] font-black uppercase transition-all rounded-xl whitespace-nowrap ${activeTab === 'links' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50'}`}>Asignaciones</button>
             </>
           )}
-          <button onClick={() => setActiveTab('logs')} className={`px-5 py-2 text-[10px] font-black uppercase rounded-xl transition-all ${activeTab === 'logs' ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'}`}>Métricas y Análisis</button>
+          <button onClick={() => setActiveTab('logs')} className={`px-4 md:px-5 py-2 md:py-2.5 text-[9px] md:text-[10px] font-black uppercase rounded-xl transition-all whitespace-nowrap ${activeTab === 'logs' ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'}`}>Métricas y Análisis</button>
         </div>
       </div>
 
@@ -410,10 +410,10 @@ export default function AdminPanel({ token, user: currentUser }) {
       {activeTab === 'logs' && (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
           
-          <div className="flex flex-col md:flex-row md:items-center justify-end gap-4 print:hidden">
-            <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap items-center gap-3">
+          <div className="flex flex-col md:flex-row md:items-center justify-end gap-2 md:gap-4 print:hidden">
+            <div className="bg-white p-2 md:p-3 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap items-center gap-2 md:gap-3">
               <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
-                {[{ id: 'this_month', l: 'Mes Actual' }, { id: '30d', l: '30d' }, { id: 'custom', l: 'Rango Período' }].map(r => (
+                {[{ id: 'this_month', l: 'Mes' }, { id: '30d', l: '30d' }, { id: 'custom', l: '...' }].map(r => (
                   <button key={r.id} onClick={() => { 
                     setStatsRange(r.id); 
                     if (r.id === 'this_month') {
@@ -425,24 +425,24 @@ export default function AdminPanel({ token, user: currentUser }) {
                       setFromDate(d.toISOString().split('T')[0]);
                       setToDate(new Date().toISOString().split('T')[0]);
                     }
-                  }} className={`px-4 py-1.5 text-[9px] font-black uppercase rounded-lg transition-all ${statsRange === r.id ? 'bg-white shadow-sm text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}>{r.l}</button>
+                  }} className={`px-3 md:px-4 py-1.5 text-[9px] font-black uppercase rounded-lg transition-all ${statsRange === r.id ? 'bg-white shadow-sm text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}>{r.l}</button>
                 ))}
               </div>
               
-              <div className="h-4 w-px bg-slate-200"></div>
+              <div className="hidden sm:block h-4 w-px bg-slate-200"></div>
               <div className="flex items-center gap-2">
                 <Calendar size={12} className="text-slate-400" />
-                <input type="date" value={fromDate} onChange={e => { setFromDate(e.target.value); setStatsRange('custom'); }} className="bg-slate-50 border-none px-3 py-1.5 rounded-xl text-[10px] font-black text-slate-700 outline-none" />
-                <span className="text-[10px] font-black text-slate-300 mx-0.5">AL</span>
-                <input type="date" value={toDate} onChange={e => { setToDate(e.target.value); setStatsRange('custom'); }} className="bg-slate-50 border-none px-3 py-1.5 rounded-xl text-[10px] font-black text-slate-700 outline-none" />
+                <input type="date" value={fromDate} onChange={e => { setFromDate(e.target.value); setStatsRange('custom'); }} className="bg-slate-50 border-none px-2 md:px-3 py-1.5 rounded-xl text-[9px] md:text-[10px] font-black text-slate-700 outline-none w-24 md:w-auto" />
+                <span className="text-[9px] md:text-[10px] font-black text-slate-300 mx-0.1">/</span>
+                <input type="date" value={toDate} onChange={e => { setToDate(e.target.value); setStatsRange('custom'); }} className="bg-slate-50 border-none px-2 md:px-3 py-1.5 rounded-xl text-[9px] md:text-[10px] font-black text-slate-700 outline-none w-24 md:w-auto" />
               </div>
 
               <div className="h-4 w-px bg-slate-200"></div>
               
               <div className="flex items-center gap-2">
                 <Briefcase size={12} className="text-slate-400" />
-                <select value={selectedPositionId} onChange={e => setSelectedPositionId(e.target.value)} className="bg-slate-50 border-none px-3 py-1.5 rounded-xl text-[10px] font-black text-slate-700 outline-none cursor-pointer">
-                  <option value="">Puesto: Todos</option>
+                <select value={selectedPositionId} onChange={e => setSelectedPositionId(e.target.value)} className="bg-slate-50 border-none px-2 md:px-3 py-1.5 rounded-xl text-[9px] md:text-[10px] font-black text-slate-700 outline-none cursor-pointer max-w-[80px] md:max-w-none">
+                  <option value="">Puesto</option>
                   {positions.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
               </div>
@@ -451,8 +451,8 @@ export default function AdminPanel({ token, user: currentUser }) {
 
               <div className="flex items-center gap-2">
                 <Users size={12} className="text-slate-400" />
-                <select value={selectedUserId} onChange={e => setSelectedUserId(e.target.value)} className="bg-slate-50 border-none px-3 py-1.5 rounded-xl text-[10px] font-black text-slate-700 outline-none cursor-pointer">
-                  <option value="">Colaborador: Todos</option>
+                <select value={selectedUserId} onChange={e => setSelectedUserId(e.target.value)} className="bg-slate-50 border-none px-2 md:px-3 py-1.5 rounded-xl text-[9px] md:text-[10px] font-black text-slate-700 outline-none cursor-pointer max-w-[80px] md:max-w-none">
+                  <option value="">Usuario</option>
                   {filteredUsers.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
                 </select>
               </div>
@@ -461,8 +461,8 @@ export default function AdminPanel({ token, user: currentUser }) {
 
               <div className="flex items-center gap-2">
                 <Layout size={12} className="text-slate-400" />
-                <select value={selectedDashboard} onChange={e => setSelectedDashboard(e.target.value)} className="bg-slate-50 border-none px-3 py-1.5 rounded-xl text-[10px] font-black text-slate-700 outline-none cursor-pointer">
-                  <option value="">Análisis por Tablero</option>
+                <select value={selectedDashboard} onChange={e => setSelectedDashboard(e.target.value)} className="bg-slate-50 border-none px-2 md:px-3 py-1.5 rounded-xl text-[9px] md:text-[10px] font-black text-slate-700 outline-none cursor-pointer max-w-[80px] md:max-w-none">
+                  <option value="">Tablero</option>
                   {filteredDashboards.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
                 </select>
               </div>

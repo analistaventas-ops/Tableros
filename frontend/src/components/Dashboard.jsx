@@ -103,42 +103,43 @@ export default function Dashboard({ user, onLogout }) {
   return (
     <div className="flex flex-col h-screen overflow-hidden">
       {/* Subtle Header */}
-      <header className="flex items-center justify-between px-6 py-3 bg-white shadow-sm shrink-0 border-b">
-        <div className="flex items-center gap-6">
-          <img src="/assets/logo.png" alt="Logo" className="h-8 w-auto" onError={(e) => { e.target.style.display = 'none'; }} />
-          <h1 className="text-lg font-black text-slate-800 uppercase tracking-tighter">
-            {user.name} {activeDashboard && <span className="font-light text-slate-400 normal-case tracking-normal"> | {activeDashboard.dashboard_name}</span>}
+      <header className="flex items-center justify-between px-4 md:px-6 py-2 md:py-3 bg-white shadow-sm shrink-0 border-b">
+        <div className="flex items-center gap-2 md:gap-6">
+          <img src="/assets/logo.png" alt="Logo" className="h-6 md:h-8 w-auto" onError={(e) => { e.target.style.display = 'none'; }} />
+          <h1 className="text-sm md:text-lg font-black text-slate-800 uppercase tracking-tighter truncate max-w-[120px] md:max-w-none">
+            {user.name} {activeDashboard && <span className="hidden sm:inline font-light text-slate-400 normal-case tracking-normal"> | {activeDashboard.dashboard_name}</span>}
           </h1>
           {canSeeMonitoring && (
-            <div className="flex bg-gray-100 rounded-lg p-1">
+            <div className="flex bg-gray-100 rounded-lg p-1 scale-90 md:scale-100">
                <button 
                 onClick={() => setShowMonitoring(false)} 
-                className={`px-3 py-1 text-xs font-bold rounded-md transition ${!showMonitoring ? 'bg-white shadow text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                className={`px-2 md:px-3 py-1 text-[10px] md:text-xs font-bold rounded-md transition ${!showMonitoring ? 'bg-white shadow text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
                >
-                 Mi Tablero
+                 {/* Show icon only on mobile for brevity if needed, but text is short enough */}
+                 Tablero
                </button>
                <button 
                 onClick={() => setShowMonitoring(true)} 
-                className={`px-3 py-1 text-xs font-bold rounded-md transition ${showMonitoring ? 'bg-white shadow text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                className={`px-2 md:px-3 py-1 text-[10px] md:text-xs font-bold rounded-md transition ${showMonitoring ? 'bg-white shadow text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
                >
-                 {user.role === 'admin' ? 'Administrar Portal' : 'Métricas y Análisis'}
+                 {user.role === 'admin' ? 'Admin' : 'Métricas'}
                </button>
             </div>
           )}
         </div>
-        <div className="flex items-center gap-4">
-           {user.position_name && <span className="hidden md:inline text-[10px] font-bold text-gray-400 bg-gray-50 px-2 py-1 rounded border uppercase tracking-widest">{user.position_name}</span>}
+        <div className="flex items-center gap-2 md:gap-4">
+           {user.position_name && <span className="hidden lg:inline text-[10px] font-bold text-gray-400 bg-gray-50 px-2 py-1 rounded border uppercase tracking-widest">{user.position_name}</span>}
            <button 
             onClick={() => setShowChangePass(true)}
-            className="text-[10px] font-bold text-slate-500 hover:text-blue-600 transition"
+            className="text-[10px] font-bold text-slate-500 hover:text-blue-600 transition flex items-center gap-1"
            >
-             🔑 Cambiar Clave
+             <span className="text-xs">🔑</span> <span className="hidden md:inline">Cambiar Clave</span>
            </button>
            <button
             onClick={onLogout}
-            className="px-4 py-2 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg border border-red-100 transition"
+            className="px-3 md:px-4 py-1.5 md:py-2 text-[10px] md:text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg border border-red-100 transition"
           >
-            Cerrar Sesión
+            Salir
           </button>
         </div>
       </header>
@@ -154,14 +155,14 @@ export default function Dashboard({ user, onLogout }) {
         ) : dashboards.length > 0 ? (
           <div className="flex flex-col h-full">
             {dashboards.length > 1 && (
-              <div className="flex bg-white border-b overflow-x-auto no-scrollbar">
+              <div className="flex bg-white border-b overflow-x-auto no-scrollbar scroll-smooth">
                 {dashboards.map((db, idx) => (
                   <button
                     key={idx}
                     onClick={() => {
                       setActiveDashboard(db);
                     }}
-                    className={`px-6 py-3 text-xs font-bold transition-all relative font-mono tracking-tight uppercase whitespace-nowrap ${activeDashboard?.dashboard_url === db.dashboard_url ? 'text-blue-600 bg-blue-50/50' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+                    className={`px-4 md:px-6 py-2 md:py-3 text-[10px] md:text-xs font-bold transition-all relative font-mono tracking-tight uppercase whitespace-nowrap ${activeDashboard?.dashboard_url === db.dashboard_url ? 'text-blue-600 bg-blue-50/50' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
                   >
                     {db.dashboard_name}
                     {activeDashboard?.dashboard_url === db.dashboard_url && (
@@ -184,9 +185,9 @@ export default function Dashboard({ user, onLogout }) {
                 style={{ opacity: obsUrl ? 1 : 0 }}
                 allowFullScreen={true}
               ></iframe>
-              {/* Power BI Bottom Covers */}
-              <div className="absolute bottom-0 left-0 w-[200px] h-[36px] bg-[#f3f2f1] z-10 pointer-events-none"></div>
-              <div className="absolute bottom-0 right-0 w-[220px] h-[36px] bg-[#f3f2f1] z-10 pointer-events-none"></div>
+              {/* Power BI Bottom Covers - Hidden on mobile to allow tab navigation */}
+              <div className="hidden md:block absolute bottom-0 left-0 w-[200px] h-[36px] bg-[#f3f2f1] z-10 pointer-events-none"></div>
+              <div className="hidden md:block absolute bottom-0 right-0 w-[220px] h-[36px] bg-[#f3f2f1] z-10 pointer-events-none"></div>
             </div>
           </div>
         ) : (
@@ -195,6 +196,7 @@ export default function Dashboard({ user, onLogout }) {
           </div>
         )}
       </main>
+
 
       {/* Change Password Modal */}
       {showChangePass && (
