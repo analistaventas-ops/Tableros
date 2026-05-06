@@ -185,9 +185,9 @@ export default function Dashboard({ user, onLogout }) {
                 style={{ opacity: obsUrl ? 1 : 0 }}
                 allowFullScreen={true}
               ></iframe>
-              {/* Power BI Bottom Covers - Hidden on mobile to allow tab navigation */}
-              <div className="hidden md:block absolute bottom-0 left-0 w-[200px] h-[36px] bg-[#f3f2f1] z-10 pointer-events-none"></div>
-              <div className="hidden md:block absolute bottom-0 right-0 w-[220px] h-[36px] bg-[#f3f2f1] z-10 pointer-events-none"></div>
+              {/* Power BI Bottom Covers - Adjusted for mobile to cover corners only */}
+              <div className="absolute bottom-0 left-0 w-20 md:w-[200px] h-[36px] bg-[#f3f2f1] z-10 pointer-events-none"></div>
+              <div className="absolute bottom-0 right-0 w-28 md:w-[220px] h-[36px] bg-[#f3f2f1] z-10 pointer-events-none"></div>
             </div>
           </div>
         ) : (
